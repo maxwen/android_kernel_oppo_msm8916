@@ -30,6 +30,7 @@
 #include <sound/soc-dapm.h>
 #include <sound/tlv.h>
 #include <sound/jack.h>
+#include <mach/oppo_project.h>
 #include "wcd-mbhc-v2.h"
 #include "wcd9xxx-mbhc.h"
 #include "msm8x16_wcd_registers.h"
@@ -557,10 +558,14 @@ static void wcd_mbhc_report_plug(struct wcd_mbhc *mbhc, int insertion,
 		if (wcd_cancel_btn_work(mbhc)) {
 			pr_debug("%s: button press is canceled\n", __func__);
 		} else if (mbhc->buttons_pressed) {
+			/*OPPO 2014-10-10 zhzhyon Delete for headset detect*/
+			#ifndef VENDOR_EDIT
 			pr_debug("%s: release of button press%d\n",
 				 __func__, jack_type);
 			wcd_mbhc_jack_report(mbhc, &mbhc->button_jack, 0,
 					    mbhc->buttons_pressed);
+			#endif
+			/*OPPO 2014-10-10 zhzhyon Delete end*/
 			mbhc->buttons_pressed &=
 				~WCD_MBHC_JACK_BUTTON_MASK;
 		}
@@ -664,6 +669,14 @@ static void wcd_mbhc_find_plug_and_report(struct wcd_mbhc *mbhc,
 		 __func__, mbhc->current_plug, plug_type);
 
 	WCD_MBHC_RSC_ASSERT_LOCKED(mbhc);
+	/*OPPO 2014-09-09 zhzhyon Add for headset detect*/	
+	#ifdef VENDOR_EDIT	
+	if(plug_type == MBHC_PLUG_TYPE_GND_MIC_SWAP)	
+	{		
+		plug_type = MBHC_PLUG_TYPE_HEADSET;	
+	}	
+	#endif	
+	/*OPPO 2014-09-09 zhzhyon Add end*/
 
 	if (plug_type == MBHC_PLUG_TYPE_HEADPHONE) {
 		/*
@@ -728,7 +741,8 @@ static void wcd_mbhc_find_plug_and_report(struct wcd_mbhc *mbhc,
 	}
 	pr_debug("%s: leave\n", __func__);
 }
-
+/*OPPO 2014-09-10 zhzhyon Delete for headset detect*/
+#ifndef VENDOR_EDIT
 /* To determine if cross connection occured */
 static bool wcd_check_cross_conn(struct wcd_mbhc *mbhc)
 {
@@ -775,6 +789,9 @@ static bool wcd_check_cross_conn(struct wcd_mbhc *mbhc)
 
 	return (plug_type == MBHC_PLUG_TYPE_GND_MIC_SWAP) ? true : false;
 }
+#endif
+/*OPPO 2014-09-10 zhzhyon Delete end*/
+
 
 static bool wcd_is_special_headset(struct wcd_mbhc *mbhc)
 {
@@ -838,7 +855,8 @@ static bool wcd_is_special_headset(struct wcd_mbhc *mbhc)
 	pr_debug("%s: leave\n", __func__);
 	return ret;
 }
-
+/*OPPO 2014-09-10 zhzhyon Modify for headset detect*/
+#ifndef VENDOR_EDIT
 static void wcd_correct_swch_plug(struct work_struct *work)
 {
 	struct wcd_mbhc *mbhc;
@@ -991,7 +1009,164 @@ exit:
 	wcd9xxx_spmi_unlock_sleep();
 	pr_debug("%s: leave\n", __func__);
 }
+#else
+static void wcd_correct_swch_plug(struct work_struct *work)
+{
+	struct wcd_mbhc *mbhc;
+	struct snd_soc_codec *codec;
+	enum wcd_mbhc_plug_type plug_type = MBHC_PLUG_TYPE_INVALID;
+	unsigned long timeout;
+	u16 result1, result2;
+	bool wrk_complete = false;
+	bool is_pa_on;
+	s16 reg;
+	u16 micbias2;
+	int headphone_count = 0;
 
+	int hph_count = 0;
+
+	pr_debug("%s: enter\n", __func__);
+
+	mbhc = container_of(work, struct wcd_mbhc, correct_plug_swch);
+	codec = mbhc->codec;
+
+	/* Enable external voltage source to micbias if present */
+	if (mbhc->mbhc_cb && mbhc->mbhc_cb->enable_mb_source)
+		mbhc->mbhc_cb->enable_mb_source(codec, true);
+
+	reg = snd_soc_read(codec, MSM8X16_WCD_A_ANALOG_MBHC_FSM_CTL);
+
+	/* Enable current source for detection in correct work*/
+	snd_soc_update_bits(codec,
+			MSM8X16_WCD_A_ANALOG_MBHC_FSM_CTL,
+			0xB0, 0xB0);
+	timeout = jiffies + msecs_to_jiffies(HS_DETECT_PLUG_TIME_MS);
+	while (!time_after(jiffies, timeout)) 
+	{
+		if (mbhc->hs_detect_work_stop || wcd_swch_level_remove(mbhc)) 
+		{
+			pr_debug("%s: stop requested: %d\n", __func__,
+					mbhc->hs_detect_work_stop);
+			goto exit;
+		}
+		/* allow sometime and re-check stop requested again */
+		msleep(200);
+		if (mbhc->hs_detect_work_stop || wcd_swch_level_remove(mbhc)) 
+		{
+			pr_debug("%s: stop requested: %d\n", __func__,
+					mbhc->hs_detect_work_stop);
+			goto exit;
+		}
+		result1 = snd_soc_read(codec,
+				 MSM8X16_WCD_A_ANALOG_MBHC_BTN_RESULT);
+		result2 = snd_soc_read(codec,
+				MSM8X16_WCD_A_ANALOG_MBHC_ZDET_ELECT_RESULT);
+		pr_debug("%s: result2 = %x\n", __func__, result2);
+
+		is_pa_on = snd_soc_read(codec,
+					MSM8X16_WCD_A_ANALOG_RX_HPH_CNP_EN) &
+					0x30;
+
+		if ((!(result2 & 0x01)) && (!is_pa_on)) 
+		{
+			plug_type = MBHC_PLUG_TYPE_HEADSET;
+		}
+		if (result2 == 1) 
+		{
+			pr_err("%s: cable is extension cable\n", __func__);
+			plug_type = MBHC_PLUG_TYPE_HIGH_HPH;
+			hph_count = hph_count + 1;
+			if((hph_count == 6) && (is_project(OPPO_14043)))
+			{
+				pr_err("%s:HPH will detected as headset\n",__func__);
+				plug_type = MBHC_PLUG_TYPE_HEADSET;
+				goto report;
+			}
+
+			wrk_complete = true;
+		} 
+		else 
+		{
+			pr_err("%s: cable might be headset: %d\n", __func__,
+					plug_type);
+			plug_type = MBHC_PLUG_TYPE_HEADSET;
+			/*
+			 * Report headset only if not already reported
+			 * and if there is not button press without
+			 * release
+			 */
+			if (mbhc->current_plug !=
+					MBHC_PLUG_TYPE_HEADSET &&
+					!mbhc->btn_press_intr) 
+			{
+				pr_err("%s: cable is headset\n",
+						__func__);
+				goto report;
+			}
+			headphone_count = headphone_count + 1;
+			if(headphone_count == 4)
+			{
+				plug_type = MBHC_PLUG_TYPE_HEADPHONE;
+
+				goto report;
+			}
+			wrk_complete = false;
+		}
+	}
+	if (mbhc->btn_press_intr) 
+	{
+		pr_err("%s: Can be slow insertion of headphone\n", __func__);
+
+		plug_type = MBHC_PLUG_TYPE_HEADPHONE;
+	}
+	/*
+	 * If plug_tye is headset, we might have already reported either in
+	 * detect_plug-type or in above while loop, no need to report again
+	 */
+	if (!wrk_complete && plug_type == MBHC_PLUG_TYPE_HEADSET) 
+	{
+		pr_err("%s: It's neither headset nor headphone\n", __func__);
+		/* Write back current source value */
+		snd_soc_write(codec, MSM8X16_WCD_A_ANALOG_MBHC_FSM_CTL, reg);
+		goto exit;
+	}
+
+	if (plug_type == MBHC_PLUG_TYPE_HIGH_HPH &&
+		(!det_extn_cable_en)) 
+	{
+		if (wcd_is_special_headset(mbhc)) 
+		{
+			pr_debug("%s: Special headset found %d\n",
+					__func__, plug_type);
+			plug_type = MBHC_PLUG_TYPE_HEADSET;
+			goto report;
+		}
+	}
+
+report:
+	/* Write back current source value */
+	snd_soc_write(codec, MSM8X16_WCD_A_ANALOG_MBHC_FSM_CTL, reg);
+	pr_err("%s: Valid plug found, plug type %d wrk_cmpt %d btn_intr %d\n",
+			__func__, plug_type, wrk_complete,
+			mbhc->btn_press_intr);
+	/*OPPO 2014-09-09 zhzhyon Modify for reason*/	
+	#ifdef VENDOR_EDIT	
+	WCD_MBHC_RSC_LOCK(mbhc);	
+	wcd_mbhc_find_plug_and_report(mbhc, plug_type);	
+	WCD_MBHC_RSC_UNLOCK(mbhc);	
+	#else	
+	wcd_mbhc_find_plug_and_report(mbhc, plug_type);	
+	#endif	
+	/*OPPO 2014-09-09 zhzhyon Modify end*/exit:
+	micbias2 = snd_soc_read(codec, MSM8X16_WCD_A_ANALOG_MICB_2_EN);
+	wcd_configure_cap(mbhc, (micbias2 & 0x80));
+	wcd9xxx_spmi_unlock_sleep();
+	pr_debug("%s: leave\n", __func__);
+}
+
+#endif
+/*OPPO 2014-09-10 zhzhyon Modify end*/
+#ifndef VENDOR_EDIT
 /* called under codec_resource_lock acquisition */
 static void wcd_mbhc_detect_plug_type(struct wcd_mbhc *mbhc)
 {
@@ -1097,7 +1272,102 @@ exit:
 		wcd_schedule_hs_detect_plug(mbhc, &mbhc->correct_plug_swch);
 	pr_debug("%s: leave\n", __func__);
 }
+#else
+static void wcd_mbhc_detect_plug_type(struct wcd_mbhc *mbhc)
+{
+	struct snd_soc_codec *codec = mbhc->codec;
+	long timeout = msecs_to_jiffies(50);   /* 50ms */
+	enum wcd_mbhc_plug_type plug_type;
+	int timeout_result;
+	u16 result1, result2;
 
+	pr_debug("%s: enter\n", __func__);
+	WCD_MBHC_RSC_ASSERT_LOCKED(mbhc);
+
+	/* Enable micbias */
+	snd_soc_update_bits(codec,
+			MSM8X16_WCD_A_ANALOG_MICB_2_EN,
+			0x80, 0x80);
+
+	/* Disable current source as micbias is enabled */
+	snd_soc_update_bits(codec,
+			MSM8X16_WCD_A_ANALOG_MBHC_FSM_CTL,
+			0xB0, 0x80);
+	wcd_configure_cap(mbhc, true);
+	/*
+	 * Wait for 50msec for FSM to complete its task.
+	 * wakeup if btn pres intr occurs
+	 */
+	mbhc->is_btn_press = false;
+	WCD_MBHC_RSC_UNLOCK(mbhc);
+	timeout_result = wait_event_interruptible_timeout(mbhc->wait_btn_press,
+			mbhc->is_btn_press, timeout);
+
+	WCD_MBHC_RSC_LOCK(mbhc);
+	result1 = snd_soc_read(codec, MSM8X16_WCD_A_ANALOG_MBHC_BTN_RESULT);
+	result2 = snd_soc_read(codec,
+			MSM8X16_WCD_A_ANALOG_MBHC_ZDET_ELECT_RESULT);
+
+	if (!timeout_result) 
+	{
+		pr_debug("%s No btn press interrupt\n", __func__);
+		/*
+		 * Check if there is any cross connection,
+		 * Micbias and schmitt trigger (HPHL-HPHR)
+		 * needs to be enabled.
+		 */
+		pr_debug("%s: result1 %x, result2 %x\n", __func__,
+						result1, result2);
+
+		/* Read back result1 and result2 value again to reconfirm*/
+		result1 = snd_soc_read(codec,
+			  MSM8X16_WCD_A_ANALOG_MBHC_BTN_RESULT);
+		result2 = snd_soc_read(codec,
+			  MSM8X16_WCD_A_ANALOG_MBHC_ZDET_ELECT_RESULT);
+
+		if (!result1 && !(result2 & 0x01))
+			plug_type = MBHC_PLUG_TYPE_HEADSET;
+		else if (!result1 && (result2 & 0x01))
+			plug_type = MBHC_PLUG_TYPE_HIGH_HPH;
+		else 
+		{
+			plug_type = MBHC_PLUG_TYPE_INVALID;
+			goto exit;
+		}
+	} 
+	else 
+	{
+		if (!result1 && !(result2 & 0x01))
+			plug_type = MBHC_PLUG_TYPE_HEADPHONE;
+		else 
+		{
+			plug_type = MBHC_PLUG_TYPE_INVALID;
+			goto exit;
+		}
+	}
+exit:
+	snd_soc_update_bits(codec,
+		MSM8X16_WCD_A_ANALOG_MICB_2_EN,
+		0x80, 0x00);
+	/* Disable external voltage source to micbias if present */
+	if (mbhc->mbhc_cb && mbhc->mbhc_cb->enable_mb_source)
+		mbhc->mbhc_cb->enable_mb_source(codec, false);
+
+	pr_err("%s: Valid plug found, plug type is %d\n",
+			 __func__, plug_type);
+	if(plug_type == MBHC_PLUG_TYPE_HEADPHONE)
+	{
+		wcd_schedule_hs_detect_plug(mbhc, &mbhc->correct_plug_swch);
+	}
+	else if (plug_type == MBHC_PLUG_TYPE_HEADSET) 
+	{
+		wcd_mbhc_find_plug_and_report(mbhc, plug_type);
+	} 
+	else
+		wcd_schedule_hs_detect_plug(mbhc, &mbhc->correct_plug_swch);
+	pr_debug("%s: leave\n", __func__);
+}
+#endif
 static void wcd_mbhc_swch_irq_handler(struct wcd_mbhc *mbhc)
 {
 	bool detection_type;
@@ -1223,7 +1493,13 @@ static irqreturn_t wcd_mbhc_mech_plug_detect_irq(int irq, void *data)
 {
 	int r = IRQ_HANDLED;
 	struct wcd_mbhc *mbhc = data;
-
+	
+	/*xiang.fei@Multimedia, 2014/08/16, Add for headset*/
+	#ifdef VENDOR_EDIT
+	disable_irq_nosync(irq);
+	#endif
+	/*xiang.fei@Multimedia, 2014/08/16, Add end*/
+	
 	pr_debug("%s: enter\n", __func__);
 	if (unlikely(wcd9xxx_spmi_lock_sleep() == false)) {
 		pr_warn("%s: failed to hold suspend\n", __func__);
@@ -1233,6 +1509,13 @@ static irqreturn_t wcd_mbhc_mech_plug_detect_irq(int irq, void *data)
 		wcd_mbhc_swch_irq_handler(mbhc);
 		wcd9xxx_spmi_unlock_sleep();
 	}
+	
+	/*xiang.fei@Multimedia, 2014/08/16, Add for headset*/
+	#ifdef VENDOR_EDIT
+	enable_irq(irq);
+	#endif
+	/*xiang.fei@Multimedia, 2014/08/16, Add end*/
+	
 	pr_debug("%s: leave %d\n", __func__, r);
 	return r;
 }
@@ -1260,6 +1543,13 @@ static int wcd_mbhc_get_button_mask(u16 btn)
 	default:
 		break;
 	}
+	
+	/*xiang.fei@Multimedia, 2014/09/01, Add for headset*/
+	#ifdef VENDOR_EDIT
+	mask = SND_JACK_BTN_0;
+	#endif
+	/*xiang.fei@Multimedia, 2014/09/01, Add end*/
+	
 	return mask;
 }
 
@@ -1273,6 +1563,12 @@ static irqreturn_t wcd_mbhc_hs_ins_irq(int irq, void *data)
 	static u16 mic_trigerred;
 
 	pr_debug("%s: enter\n", __func__);
+
+#ifdef VENDOR_EDIT
+	/*OPPO 2014-08-04 zhzhyon Delete headset detect*/
+	return 0;
+	/*OPPO 2014-08-04 zhzhyon Detele end*/
+#endif
 	if (!mbhc->mbhc_cfg->detect_extn_cable) {
 		pr_debug("%s: Returning as Extension cable feature not enabled\n",
 			__func__);

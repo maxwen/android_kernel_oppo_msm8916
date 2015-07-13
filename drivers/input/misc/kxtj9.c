@@ -1,3 +1,15 @@
+/*************************************************************
+ ** Copyright (C), 2012-2016, OPPO Mobile Comm Corp., Ltd 
+ ** VENDOR_EDIT
+ ** File        : kxtj9.c
+ ** Description : 
+ ** Date        : 2014-11-04 17:39
+ ** Author      : BSP.Sensor
+ ** 
+ ** ------------------ Revision History: ---------------------
+ **      <author>        <date>          <desc>
+ *************************************************************/
+
 /*
  * Copyright (C) 2011 Kionix, Inc.
  * Written by Chris Hudson <chudson@kionix.com>
@@ -28,6 +40,8 @@
 #include <linux/input-polldev.h>
 #include <linux/regulator/consumer.h>
 #include <linux/of.h>
+#include	<linux/workqueue.h>
+#include <linux/sensors_ftm.h>
 
 #define ACCEL_INPUT_DEV_NAME	"accelerometer"
 #define DEVICE_NAME		"kxtj9"
@@ -72,6 +86,21 @@
 #define KXTJ9_VDD_MAX_UV	3300000
 #define KXTJ9_VIO_MIN_UV	1750000
 #define KXTJ9_VIO_MAX_UV	1950000
+
+//#ifdef VENDOR_EDIT /* LiuPing@Phone.BSP.Sensor, 2014/07/29, add for gsensor cali */
+#define KXTJ9_AXIS_X				0
+#define KXTJ9_AXIS_Y				1
+#define KXTJ9_AXIS_Z				2
+#define KXTJ9_CALIBRATION_FLAG     3
+#define KXTJ9_AXES_NUM				3
+#define KXTJ9_BUFSIZE				256
+//#endif /*VENDOR_EDIT*/
+
+
+#define KXTJ9_POLL_MODE
+
+static int g_CTRL_REG1 = 0x1B;
+static int g_INT_CTRL1 = 0x1E;
 
 /*
  * The following table lists the maximum appropriate poll interval for each
@@ -126,7 +155,14 @@ struct kxtj9_data {
 	struct regulator *vdd;
 	struct regulator *vio;
 	struct sensors_classdev cdev;
+#ifdef KXTJ9_POLL_MODE    
+	struct delayed_work input_work;
+#endif
+//#ifdef VENDOR_EDIT /* LiuPing@Phone.BSP.Sensor, 2014/07/30, add for gsensor cali */
+        s16   cali_sw[3+1];
+//#endif /*VENDOR_EDIT*/
 };
+
 
 static int kxtj9_i2c_read(struct kxtj9_data *tj9, u8 addr, u8 *data, int len)
 {
@@ -148,7 +184,7 @@ static int kxtj9_i2c_read(struct kxtj9_data *tj9, u8 addr, u8 *data, int len)
 	return i2c_transfer(tj9->client->adapter, msgs, 2);
 }
 
-static void kxtj9_report_acceleration_data(struct kxtj9_data *tj9)
+static void kxtj9_report_acceleration_data(struct kxtj9_data *tj9,int *xyz, int cali_flag)
 {
 	s16 acc_data[3]; /* Data bytes from hardware xL, xH, yL, yH, zL, zH */
 	s16 x, y, z;
@@ -173,19 +209,166 @@ static void kxtj9_report_acceleration_data(struct kxtj9_data *tj9)
 	y >>= tj9->shift;
 	z >>= tj9->shift;
 
-	input_report_abs(tj9->input_dev, ABS_X, tj9->pdata.negate_x ? -x : x);
-	input_report_abs(tj9->input_dev, ABS_Y, tj9->pdata.negate_y ? -y : y);
-	input_report_abs(tj9->input_dev, ABS_Z, tj9->pdata.negate_z ? -z : z);
+       x = tj9->pdata.negate_x ? -x : x;
+       y = tj9->pdata.negate_y ? -y : y;
+       z = tj9->pdata.negate_z ? -z : z;
+
+//#ifdef VENDOR_EDIT /* LiuPing@Phone.BSP.Sensor, 2014/07/30, add for gsensor cali */
+        //when user calibrat gsensor, need original data from kxtj9 ,can not add cali_sw data
+        if(!cali_flag) 
+        {
+            x += tj9->cali_sw[KXTJ9_AXIS_X];
+            y += tj9->cali_sw[KXTJ9_AXIS_Y];
+            z += tj9->cali_sw[KXTJ9_AXIS_Z];
+        }
+	#ifdef DEBUG
+	dev_dbg(&tj9->client->dev, "%s after cali: the data x=%d, y=%d, z=%d\n",
+			__func__, x, y, z);
+	#endif
+//#endif /*VENDOR_EDIT*/
+
+       xyz[KXTJ9_AXIS_X] = x; 
+       xyz[KXTJ9_AXIS_Y] = y; 
+       xyz[KXTJ9_AXIS_Z] = z; 
+
+	input_report_abs(tj9->input_dev, ABS_X, x);
+	input_report_abs(tj9->input_dev, ABS_Y, y);
+	input_report_abs(tj9->input_dev, ABS_Z, z);
 	input_sync(tj9->input_dev);
 }
+
+
+//#ifdef VENDOR_EDIT /* LiuPing@Phone.BSP.Sensor, 2014/07/29, add for gsensor cali */
+static int calculate_gsensor_cali_data(struct i2c_client *client, int data[KXTJ9_AXES_NUM+1])
+{
+    u8 i = 0;
+    int average_offset[3] = {0};
+    int read_buff[3] = {0};
+    int calibration_buf[KXTJ9_AXES_NUM+1] = {0};
+    char buff[KXTJ9_BUFSIZE] = {0};
+    struct kxtj9_data *obj = (struct kxtj9_data*)i2c_get_clientdata(client);	
+
+    if (NULL == client)
+    {	
+        printk("null pointer!!\n");
+        return -EINVAL;
+    }
+
+    printk("/*****************************************/\n");
+
+    for (i = 0; i < 20; i ++)
+    {		
+        strcpy(buff,"calibration gsensor");
+        kxtj9_report_acceleration_data(obj, read_buff, 1);
+        if(read_buff[0] == 0 && read_buff[1] == 0 && read_buff[2] == 0)
+        {        
+            printk("I2C error: read xyz error \n");
+            return -EIO;
+        }
+
+        //sscanf(buff, "%x %x %x", &read_buff[KXTJ9_AXIS_X],&read_buff[KXTJ9_AXIS_Y],&read_buff[KXTJ9_AXIS_Z] );
+
+        printk("calculate_gsensor: (%5d %5d %5d)\n",read_buff[KXTJ9_AXIS_X],read_buff[KXTJ9_AXIS_Y],read_buff[KXTJ9_AXIS_Z]);
+
+        average_offset[KXTJ9_AXIS_X] += read_buff[KXTJ9_AXIS_X];
+        average_offset[KXTJ9_AXIS_Y] += read_buff[KXTJ9_AXIS_Y];
+        average_offset[KXTJ9_AXIS_Z] += read_buff[KXTJ9_AXIS_Z];
+        msleep(20);
+    }
+
+    average_offset[KXTJ9_AXIS_X] /= 20;
+    average_offset[KXTJ9_AXIS_Y] /= 20;
+    average_offset[KXTJ9_AXIS_Z] /= 20;
+
+    calibration_buf[KXTJ9_AXIS_X] = 0-average_offset[KXTJ9_AXIS_X];
+    calibration_buf[KXTJ9_AXIS_Y] = 0-average_offset[KXTJ9_AXIS_Y] ;
+    calibration_buf[KXTJ9_AXIS_Z] = 1024-average_offset[KXTJ9_AXIS_Z] ;
+
+    if(abs(calibration_buf[KXTJ9_AXIS_X]) <= 150
+            && abs(calibration_buf[KXTJ9_AXIS_Y]) <= 150
+            && abs(calibration_buf[KXTJ9_AXIS_Z])<= 300)
+    {
+        calibration_buf[KXTJ9_CALIBRATION_FLAG] = 1;	// calibration ok
+
+        obj->cali_sw[KXTJ9_AXIS_X] = calibration_buf[KXTJ9_AXIS_X];	// write the calibration data
+        obj->cali_sw[KXTJ9_AXIS_Y] = calibration_buf[KXTJ9_AXIS_Y];
+        obj->cali_sw[KXTJ9_AXIS_Z] = calibration_buf[KXTJ9_AXIS_Z];	
+        obj->cali_sw[KXTJ9_CALIBRATION_FLAG] = calibration_buf[KXTJ9_CALIBRATION_FLAG];
+    }
+    else   
+    {
+        calibration_buf[KXTJ9_CALIBRATION_FLAG] = 0;	// calibration failed
+    }
+ 
+
+    data[KXTJ9_AXIS_X] = calibration_buf[KXTJ9_AXIS_X];
+    data[KXTJ9_AXIS_Y] = calibration_buf[KXTJ9_AXIS_Y];
+    data[KXTJ9_AXIS_Z] = calibration_buf[KXTJ9_AXIS_Z];
+    data[KXTJ9_CALIBRATION_FLAG] = calibration_buf[KXTJ9_CALIBRATION_FLAG];
+
+    printk("\ngsensor offset: (%5d, %5d, %5d)\n\n", data[KXTJ9_AXIS_X], data[KXTJ9_AXIS_Y], data[KXTJ9_AXIS_Z]);	
+
+    printk("/*****************************************/\n");
+
+    return 0;	
+}
+static ssize_t attr_get_cali(struct device *dev,
+			       struct device_attribute *attr, char *buf)
+{
+	struct kxtj9_data *acc = dev_get_drvdata(dev);
+       int cali_buff[KXTJ9_AXES_NUM+1] = {0};
+
+	mutex_lock(&acc->input_dev->mutex);
+       calculate_gsensor_cali_data(acc->client, cali_buff);
+	mutex_unlock(&acc->input_dev->mutex);
+	return snprintf(buf, PAGE_SIZE, "%d %d %d %d\n", cali_buff[0], cali_buff[1], cali_buff[2], cali_buff[3]);
+}
+
+static ssize_t attr_set_cali(struct device *dev,
+			      struct device_attribute *attr,
+			      const char *buf, size_t size)
+{
+       int i, ret;
+       char *token[10];
+       s16 cali_buf[3] = {0};
+	struct kxtj9_data *acc = dev_get_drvdata(dev);
+    
+	for (i = 0; i < 3; i++)
+		token[i] = strsep((char **)&buf, " ");
+
+       for (i = 0; i < 3; i++)
+       {
+        	ret = kstrtol(token[i], 10, (long *)&(cali_buf[i]));
+        	if (ret < 0) {
+
+        		printk(KERN_ERR "%s:kstrtoul failed, ret=0x%x\n",
+        			__func__, ret);
+        		return ret;
+        	}
+       }
+    
+
+       for (i = 0; i < 3; i++)
+             acc->cali_sw[i] = cali_buf[i];
+       
+        return size;
+}
+
+static DEVICE_ATTR(cali, S_IRUGO|S_IWUSR|S_IWGRP,
+			attr_get_cali, attr_set_cali);
+//#endif /*VENDOR_EDIT*/
+
+
+
 
 static irqreturn_t kxtj9_isr(int irq, void *dev)
 {
 	struct kxtj9_data *tj9 = dev;
 	int err;
+       int xyz[3] = { 0 };
 
 	/* data ready is the only possible interrupt type */
-	kxtj9_report_acceleration_data(tj9);
+	kxtj9_report_acceleration_data(tj9, xyz, 0);
 
 	err = i2c_smbus_read_byte_data(tj9->client, INT_REL);
 	if (err < 0)
@@ -194,6 +377,24 @@ static irqreturn_t kxtj9_isr(int irq, void *dev)
 
 	return IRQ_HANDLED;
 }
+
+#ifdef KXTJ9_POLL_MODE   
+static void kxtj9_acc_input_work_func(struct work_struct *work)
+{
+      struct kxtj9_data *tj9;
+      int xyz[3] = { 0 };
+
+       //printk(KERN_EMERG"%s  line:%d \n", __func__, __LINE__); 
+	tj9 = container_of((struct delayed_work *)work,
+			struct kxtj9_data,	input_work);
+
+	kxtj9_report_acceleration_data(tj9, xyz, 0);
+
+	schedule_delayed_work(&tj9->input_work, msecs_to_jiffies(
+			tj9->last_poll_interval));
+
+}
+#endif
 
 static int kxtj9_update_g_range(struct kxtj9_data *tj9, u8 new_g_range)
 {
@@ -229,7 +430,7 @@ static int kxtj9_update_odr(struct kxtj9_data *tj9, unsigned int poll_interval)
 			break;
 	}
 
-	err = i2c_smbus_write_byte_data(tj9->client, CTRL_REG1, 0);
+	err = i2c_smbus_write_byte_data(tj9->client, g_CTRL_REG1, 0);
 	if (err < 0)
 		return err;
 
@@ -237,7 +438,7 @@ static int kxtj9_update_odr(struct kxtj9_data *tj9, unsigned int poll_interval)
 	if (err < 0)
 		return err;
 
-	err = i2c_smbus_write_byte_data(tj9->client, CTRL_REG1, tj9->ctrl_reg1);
+	err = i2c_smbus_write_byte_data(tj9->client, g_CTRL_REG1, tj9->ctrl_reg1);
 	if (err < 0)
 		return err;
 
@@ -381,7 +582,7 @@ static void kxtj9_device_power_off(struct kxtj9_data *tj9)
 	int err;
 
 	tj9->ctrl_reg1 &= PC1_OFF;
-	err = i2c_smbus_write_byte_data(tj9->client, CTRL_REG1, tj9->ctrl_reg1);
+	err = i2c_smbus_write_byte_data(tj9->client, g_CTRL_REG1, tj9->ctrl_reg1);
 	if (err < 0)
 		dev_err(&tj9->client->dev, "soft power off failed\n");
 
@@ -403,14 +604,14 @@ static int kxtj9_enable(struct kxtj9_data *tj9)
 		return err;
 
 	/* ensure that PC1 is cleared before updating control registers */
-	err = i2c_smbus_write_byte_data(tj9->client, CTRL_REG1, 0);
+	err = i2c_smbus_write_byte_data(tj9->client, g_CTRL_REG1, 0);
 	if (err < 0)
 		return err;
 
 	/* only write INT_CTRL_REG1 if in irq mode */
 	if (tj9->client->irq) {
 		err = i2c_smbus_write_byte_data(tj9->client,
-						INT_CTRL1, tj9->int_ctrl);
+						g_INT_CTRL1, tj9->int_ctrl);
 		if (err < 0)
 			return err;
 	}
@@ -421,7 +622,7 @@ static int kxtj9_enable(struct kxtj9_data *tj9)
 
 	/* turn on outputs */
 	tj9->ctrl_reg1 |= PC1_ON;
-	err = i2c_smbus_write_byte_data(tj9->client, CTRL_REG1, tj9->ctrl_reg1);
+	err = i2c_smbus_write_byte_data(tj9->client, g_CTRL_REG1, tj9->ctrl_reg1);
 	if (err < 0)
 		return err;
 
@@ -438,7 +639,10 @@ static int kxtj9_enable(struct kxtj9_data *tj9)
 			goto fail;
 		}
 	}
-
+#ifdef KXTJ9_POLL_MODE
+      	schedule_delayed_work(&tj9->input_work, msecs_to_jiffies(
+			tj9->last_poll_interval));  
+#endif
 	return 0;
 
 fail:
@@ -448,6 +652,9 @@ fail:
 
 static void kxtj9_disable(struct kxtj9_data *tj9)
 {
+#ifdef KXTJ9_POLL_MODE
+       cancel_delayed_work_sync(&tj9->input_work);
+#endif
 	kxtj9_device_power_off(tj9);
 }
 
@@ -500,16 +707,18 @@ static int kxtj9_enable_set(struct sensors_classdev *sensors_cdev,
 	struct kxtj9_data *tj9 = container_of(sensors_cdev,
 					struct kxtj9_data, cdev);
 	struct input_dev *input_dev = tj9->input_dev;
-
+        printk(KERN_ERR"%s  line:%d \n", __func__, __LINE__); 
 	mutex_lock(&input_dev->mutex);
 
 	if (enabled == 0) {
-		disable_irq(tj9->client->irq);
+              if (tj9->client->irq)
+	        	disable_irq(tj9->client->irq);
 		kxtj9_disable(tj9);
 		tj9->enable = false;
 	} else if (enabled == 1) {
 		if (!kxtj9_enable(tj9)) {
-			enable_irq(tj9->client->irq);
+                     if (tj9->client->irq)   
+			        enable_irq(tj9->client->irq);
 			tj9->enable = true;
 		}
 	} else {
@@ -576,13 +785,17 @@ static int kxtj9_poll_delay_set(struct sensors_classdev *sensors_cdev,
 	mutex_lock(&input_dev->mutex);
 
 	if (tj9->enable)
-		disable_irq(tj9->client->irq);
+       {
+              if (tj9->client->irq)  
+		    disable_irq(tj9->client->irq);
+       }
 
 	tj9->last_poll_interval = max(delay_msec, tj9->pdata.min_interval);
 
 	if (tj9->enable) {
 		kxtj9_update_odr(tj9, tj9->last_poll_interval);
-		enable_irq(tj9->client->irq);
+              if (tj9->client->irq)
+		    enable_irq(tj9->client->irq);
 	}
 	mutex_unlock(&input_dev->mutex);
 
@@ -625,6 +838,9 @@ static DEVICE_ATTR(poll_delay, S_IRUGO|S_IWUSR|S_IWGRP,
 static struct attribute *kxtj9_attributes[] = {
 	&dev_attr_enable.attr,
 	&dev_attr_poll_delay.attr,
+//#ifdef VENDOR_EDIT /* LiuPing@Phone.BSP.Sensor, 2014/11/06, add for gsensor cali. */
+	&dev_attr_cali.attr,
+//#endif /*VENDOR_EDIT*/
 	NULL
 };
 
@@ -632,13 +848,15 @@ static struct attribute_group kxtj9_attribute_group = {
 	.attrs = kxtj9_attributes
 };
 
+
 #ifdef CONFIG_INPUT_KXTJ9_POLLED_MODE
 static void kxtj9_poll(struct input_polled_dev *dev)
 {
 	struct kxtj9_data *tj9 = dev->private;
 	unsigned int poll_interval = dev->poll_interval;
+       int xyz[3] = { 0 };
 
-	kxtj9_report_acceleration_data(tj9);
+	kxtj9_report_acceleration_data(tj9, xyz, 0);
 
 	if (poll_interval != tj9->last_poll_interval) {
 		kxtj9_update_odr(tj9, poll_interval);
@@ -721,7 +939,13 @@ static int kxtj9_verify(struct kxtj9_data *tj9)
 		dev_err(&tj9->client->dev, "read err int source\n");
 		goto out;
 	}
-
+       printk(KERN_ERR"%s  product:0x%x \n", __func__, retval); 
+       if (retval == 0x15)     //for kx023
+       {
+            g_CTRL_REG1 = 0x18;
+            g_INT_CTRL1 = 0x1C;
+            return 0;
+       }
 	retval = (retval != 0x05 && retval != 0x07 && retval != 0x08)
 			? -EIO : 0;
 
@@ -817,13 +1041,138 @@ static int kxtj9_parse_dt(struct device *dev,
 	return -ENODEV;
 }
 #endif /* !CONFIG_OF */
+/*--------------------------------------------------------------------------*/
+static struct kxtj9_data *g_kxtj9_data;
+static ssize_t kxtj9_acc_enable_store(struct kobject *kobj, struct kobj_attribute *attr, const char *buf, size_t count)
+{
+	u32 data;
+	int ret = -EINVAL;
+	struct kxtj9_data *acc = g_kxtj9_data;
+	
+	sscanf(buf, "%x", &data);
+	if (data && acc->enable == 0) {
+		ret = kxtj9_enable(acc);
+		if (ret < 0) {
+			printk("%s: Enable sensor Fail\n",__func__);
+		}
+	}
+	else if (!data && acc->enable == 1)
+	{
+		kxtj9_disable(acc);
+	}
+	if (ret == 0)
+		printk("%s: Enable sensor SUCCESS\n",__func__);
 
+	return count;
+}
+static ssize_t kxtj9_acc_enable_show(struct kobject *kobj, struct kobj_attribute *attr, char *buf)
+{
+	struct kxtj9_data *acc = g_kxtj9_data;
+
+	return snprintf(buf, PAGE_SIZE, "accelerator:%d\n", acc->enable);
+}
+static struct kobj_attribute enable = 
+{
+	.attr = {"enable", 0664},
+	.show = kxtj9_acc_enable_show,
+	.store = kxtj9_acc_enable_store,
+};
+static ssize_t kxtj9_acc_raw_show(struct kobject *kobj, struct kobj_attribute *attr, char *buf)
+{
+	struct kxtj9_data *acc = g_kxtj9_data;
+
+	s16 acc_data[3]; /* Data bytes from hardware xL, xH, yL, yH, zL, zH */
+	s16 x, y, z;
+	int err;
+
+	err = kxtj9_i2c_read(acc, XOUT_L, (u8 *)acc_data, 6);
+	if (err < 0)
+		dev_err(&acc->client->dev, "accelerometer data read failed\n");
+
+	x = le16_to_cpu(acc_data[acc->pdata.axis_map_x]);
+	y = le16_to_cpu(acc_data[acc->pdata.axis_map_y]);
+	z = le16_to_cpu(acc_data[acc->pdata.axis_map_z]);
+
+	/* 8 bits output mode support */
+	if (!(acc->ctrl_reg1 & RES_12BIT)) {
+		x <<= 4;
+		y <<= 4;
+		z <<= 4;
+	}
+
+	x >>= acc->shift;
+	y >>= acc->shift;
+	z >>= acc->shift;
+
+	return snprintf(buf, PAGE_SIZE, "%d %d %d\n", x, y, z);
+}
+static struct kobj_attribute accel_raw = 
+{
+	.attr = {"accel_raw", 0444},
+	.show = kxtj9_acc_raw_show,
+};
+
+static ssize_t kxtj9_acc_cali_store(struct kobject *kobj, struct kobj_attribute *attr, const char *buf, size_t count)
+{
+       int i, ret;
+       char *token[10];
+       s16 cali_buf[3] = {0};
+	struct kxtj9_data *acc = g_kxtj9_data;
+    
+	for (i = 0; i < 3; i++)
+		token[i] = strsep((char **)&buf, " ");
+
+       for (i = 0; i < 3; i++)
+       {
+        	ret = kstrtol(token[i], 10, (long *)&(cali_buf[i]));
+        	if (ret < 0) {
+
+        		printk(KERN_ERR "%s:kstrtoul failed, ret=0x%x\n",
+        			__func__, ret);
+        		return ret;
+        	}
+       }
+
+       printk(KERN_ERR"%s cali_buf[0]:%d  cali_buf[1]:%d  cali_buf[2]:%d \n", __func__, cali_buf[0], cali_buf[1], cali_buf[2]);
+       for (i = 0; i < 3; i++)
+             acc->cali_sw[i] = cali_buf[i];
+       
+	return count;
+}
+static ssize_t kxtj9_acc_cali_show(struct kobject *kobj, struct kobj_attribute *attr, char *buf)
+{
+	struct kxtj9_data *acc = g_kxtj9_data;
+
+       int cali_buff[KXTJ9_AXES_NUM+1] = {0};
+
+       calculate_gsensor_cali_data(acc->client, cali_buff);
+
+	return snprintf(buf, PAGE_SIZE, "%d %d %d %d\n", cali_buff[0], cali_buff[1], cali_buff[2], cali_buff[3]);
+}
+static struct kobj_attribute cali = 
+{
+	.attr = {"cali", 0664},
+	.show = kxtj9_acc_cali_show,
+	.store = kxtj9_acc_cali_store,
+};
+
+static const struct attribute *kxtj9_ftm_attrs[] = 
+{
+	&enable.attr,
+	&accel_raw.attr,
+	&cali.attr,
+	NULL
+};
+
+static struct dev_ftm kxtj9_ftm;
+/*--------------------------------------------------------------------------*/
 static int kxtj9_probe(struct i2c_client *client,
 				 const struct i2c_device_id *id)
 {
 	struct kxtj9_data *tj9;
 	int err;
 
+       dev_err(&client->dev, "%s: kxtj9_probe start ...\n", __func__); 
 	if (!i2c_check_functionality(client->adapter,
 				I2C_FUNC_I2C | I2C_FUNC_SMBUS_BYTE_DATA)) {
 		dev_err(&client->dev, "client is not i2c capable\n");
@@ -899,14 +1248,15 @@ static int kxtj9_probe(struct i2c_client *client,
 		goto err_power_off;
 	}
 
+	err = kxtj9_setup_input_device(tj9);
+       if (err)
+                goto err_power_off;
+
 	if (client->irq) {
+              dev_err(&client->dev, "%s: kxtj9_probe irq setting \n", __func__);   
 		/* If in irq mode, populate INT_CTRL_REG1 and enable DRDY. */
 		tj9->int_ctrl |= KXTJ9_IEN | KXTJ9_IEA | KXTJ9_IEL;
 		tj9->ctrl_reg1 |= DRDYE;
-
-		err = kxtj9_setup_input_device(tj9);
-		if (err)
-			goto err_power_off;
 
 		err = request_threaded_irq(client->irq, NULL, kxtj9_isr,
 					   IRQF_TRIGGER_RISING | IRQF_ONESHOT,
@@ -918,25 +1268,40 @@ static int kxtj9_probe(struct i2c_client *client,
 
 		disable_irq(tj9->client->irq);
 
-		err = sysfs_create_group(&client->dev.kobj, &kxtj9_attribute_group);
+	} 
+       else 
+       {
+              if (0)
+             {
+		err = kxtj9_setup_polled_device(tj9);
+		if (err)
+			goto err_power_off;
+             }
+#ifdef KXTJ9_POLL_MODE              
+	       INIT_DELAYED_WORK(&tj9->input_work, kxtj9_acc_input_work_func);
+#endif
+	}
+
+       err = sysfs_create_group(&client->dev.kobj, &kxtj9_attribute_group);
 		if (err) {
 			dev_err(&client->dev, "sysfs create failed: %d\n", err);
 			goto err_free_irq;
 		}
 
-	} else {
-		err = kxtj9_setup_polled_device(tj9);
-		if (err)
-			goto err_power_off;
-	}
 
-
-	dev_dbg(&client->dev, "%s: kxtj9_probe OK.\n", __func__);
+	dev_err(&client->dev, "%s: kxtj9_probe OK.\n", __func__);
 	kxtj9_device_power_off(tj9);
+	g_kxtj9_data= tj9;
+	kxtj9_ftm.name = "accel";
+	kxtj9_ftm.i2c_client = tj9->client;
+	kxtj9_ftm.priv_data = tj9;
+	kxtj9_ftm.attrs = kxtj9_ftm_attrs;
+	register_single_dev_ftm(&kxtj9_ftm);
 	return 0;
 
 err_free_irq:
-	free_irq(client->irq, tj9);
+       if (client->irq)
+	    free_irq(client->irq, tj9);
 err_destroy_input:
 	input_unregister_device(tj9->input_dev);
 err_power_off:

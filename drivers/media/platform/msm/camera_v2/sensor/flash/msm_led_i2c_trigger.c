@@ -18,7 +18,7 @@
 #include "msm_led_flash.h"
 #include "msm_camera_io_util.h"
 #include "../msm_sensor.h"
-#include "msm_led_flash.h"
+//#include "msm_led_flash.h"
 #include "../cci/msm_cci.h"
 #include <linux/debugfs.h>
 
@@ -31,6 +31,10 @@
 #define CDBG(fmt, args...) pr_err(fmt, ##args)
 #else
 #define CDBG(fmt, args...) do { } while (0)
+#endif
+#ifdef VENDOR_EDIT
+/*OPPO hufeng 2014-09-02 add for individual flashlight*/
+int32_t IS_FLASH_ON;
 #endif
 
 int32_t msm_led_i2c_trigger_get_subdev_id(struct msm_led_flash_ctrl_t *fctrl,
@@ -52,7 +56,7 @@ int32_t msm_led_i2c_trigger_config(struct msm_led_flash_ctrl_t *fctrl,
 {
 	int rc = 0;
 	struct msm_camera_led_cfg_t *cfg = (struct msm_camera_led_cfg_t *)data;
-	CDBG("called led_state %d\n", cfg->cfgtype);
+	pr_err("called led_state %d\n", cfg->cfgtype);
 
 	if (!fctrl->func_tbl) {
 		pr_err("failed\n");
@@ -162,7 +166,10 @@ int msm_flash_led_init(struct msm_led_flash_ctrl_t *fctrl)
 		power_info->gpio_conf->cam_gpio_req_tbl_size, 1);
 	if (rc < 0) {
 		pr_err("%s: request gpio failed\n", __func__);
+#ifndef VENDOR_EDIT
+/*zhengrong.zhang 2014-11-08 Modify for no need return */
 		return rc;
+#endif
 	}
 
 	if (fctrl->pinctrl_info.use_pinctrl == true) {
@@ -183,7 +190,8 @@ int msm_flash_led_init(struct msm_led_flash_ctrl_t *fctrl)
 			power_info->gpio_conf->gpio_num_info->
 			gpio_num[SENSOR_GPIO_FL_RESET],
 			GPIO_OUT_HIGH);
-
+#ifndef VENDOR_EDIT
+/*zhengrong.zhang 2014-11-08 Modify for gpio contrl lm3642 */
 	gpio_set_value_cansleep(
 		power_info->gpio_conf->gpio_num_info->
 		gpio_num[SENSOR_GPIO_FL_EN],
@@ -193,7 +201,20 @@ int msm_flash_led_init(struct msm_led_flash_ctrl_t *fctrl)
 		power_info->gpio_conf->gpio_num_info->
 		gpio_num[SENSOR_GPIO_FL_NOW],
 		GPIO_OUT_HIGH);
+#else
+	gpio_set_value_cansleep(
+		power_info->gpio_conf->gpio_num_info->
+		gpio_num[SENSOR_GPIO_FL_EN],
+		GPIO_OUT_LOW);
 
+	gpio_set_value_cansleep(
+		power_info->gpio_conf->gpio_num_info->
+		gpio_num[SENSOR_GPIO_FL_NOW],
+		GPIO_OUT_LOW);
+#endif
+
+#ifndef VENDOR_EDIT
+//OPPO 2014-07-25 hufeng delete for lm3642 because flash init before sensor powerup
 	if (fctrl->flash_i2c_client && fctrl->reg_setting) {
 		rc = fctrl->flash_i2c_client->i2c_func_tbl->i2c_write_table(
 			fctrl->flash_i2c_client,
@@ -201,6 +222,7 @@ int msm_flash_led_init(struct msm_led_flash_ctrl_t *fctrl)
 		if (rc < 0)
 			pr_err("%s:%d failed\n", __func__, __LINE__);
 	}
+#endif
         fctrl->led_state = MSM_CAMERA_LED_INIT;
 	return rc;
 }
@@ -282,6 +304,15 @@ int msm_flash_led_off(struct msm_led_flash_ctrl_t *fctrl)
 		rc = fctrl->flash_i2c_client->i2c_func_tbl->i2c_write_table(
 			fctrl->flash_i2c_client,
 			fctrl->reg_setting->off_setting);
+#ifdef VENDOR_EDIT
+/* zhengrong.zhang,20141010,Add for LM3642 */
+		{	
+			uint16_t flag_register = 0;
+			rc = fctrl->flash_i2c_client->i2c_func_tbl->i2c_read(
+				fctrl->flash_i2c_client, 0x0B,
+				&flag_register, MSM_CAMERA_I2C_BYTE_DATA);
+		}
+#endif  
 		if (rc < 0)
 			pr_err("%s:%d failed\n", __func__, __LINE__);
 	}
@@ -289,7 +320,10 @@ int msm_flash_led_off(struct msm_led_flash_ctrl_t *fctrl)
 		power_info->gpio_conf->gpio_num_info->
 		gpio_num[SENSOR_GPIO_FL_NOW],
 		GPIO_OUT_LOW);
-
+#ifdef VENDOR_EDIT
+/*OPPO hufeng 2014-09-02 add for individual flashlight*/
+	IS_FLASH_ON = 0;
+#endif
 	return rc;
 }
 
@@ -306,21 +340,40 @@ int msm_flash_led_low(struct msm_led_flash_ctrl_t *fctrl)
 		power_info->gpio_conf->gpio_num_info->
 		gpio_num[SENSOR_GPIO_FL_EN],
 		GPIO_OUT_HIGH);
-
+#ifndef VENDOR_EDIT
+/*zhengrong.zhang 2014-11-08 Modify for gpio contrl lm3642 */
 	gpio_set_value_cansleep(
 		power_info->gpio_conf->gpio_num_info->
 		gpio_num[SENSOR_GPIO_FL_NOW],
 		GPIO_OUT_HIGH);
-
+#else
+	gpio_set_value_cansleep(
+		power_info->gpio_conf->gpio_num_info->
+		gpio_num[SENSOR_GPIO_FL_NOW],
+		GPIO_OUT_LOW);
+#endif
 
 	if (fctrl->flash_i2c_client && fctrl->reg_setting) {
 		rc = fctrl->flash_i2c_client->i2c_func_tbl->i2c_write_table(
 			fctrl->flash_i2c_client,
 			fctrl->reg_setting->low_setting);
+#ifdef VENDOR_EDIT
+/* zhengrong.zhang,20141010,Add for LM3642 */
+        {
+            uint16_t flag_register = 0;
+            rc = fctrl->flash_i2c_client->i2c_func_tbl->i2c_read(
+                fctrl->flash_i2c_client, 0x0B,
+                &flag_register, MSM_CAMERA_I2C_BYTE_DATA);
+            //pr_err("%s: flag_register=0x%x\n", __func__,flag_register);
+		}
+#endif  
 		if (rc < 0)
 			pr_err("%s:%d failed\n", __func__, __LINE__);
 	}
-
+#ifdef VENDOR_EDIT
+/*OPPO hufeng 2014-09-02 add for individual flashlight*/
+	IS_FLASH_ON = 1;
+#endif
 	return rc;
 }
 
@@ -333,11 +386,18 @@ int msm_flash_led_high(struct msm_led_flash_ctrl_t *fctrl)
 
 	flashdata = fctrl->flashdata;
 	power_info = &flashdata->power_info;
+#ifndef VENDOR_EDIT
+/*zhengrong.zhang 2014-11-08 Modify for gpio contrl lm3642 */
 	gpio_set_value_cansleep(
 		power_info->gpio_conf->gpio_num_info->
 		gpio_num[SENSOR_GPIO_FL_EN],
 		GPIO_OUT_HIGH);
-
+#else
+	gpio_set_value_cansleep(
+		power_info->gpio_conf->gpio_num_info->
+		gpio_num[SENSOR_GPIO_FL_EN],
+		GPIO_OUT_LOW);
+#endif
 	gpio_set_value_cansleep(
 		power_info->gpio_conf->gpio_num_info->
 		gpio_num[SENSOR_GPIO_FL_NOW],
@@ -347,10 +407,23 @@ int msm_flash_led_high(struct msm_led_flash_ctrl_t *fctrl)
 		rc = fctrl->flash_i2c_client->i2c_func_tbl->i2c_write_table(
 			fctrl->flash_i2c_client,
 			fctrl->reg_setting->high_setting);
+#ifdef VENDOR_EDIT
+/* zhengrong.zhang,20141010,Add for LM3642 */
+        {
+            uint16_t flag_register = 0;
+            rc = fctrl->flash_i2c_client->i2c_func_tbl->i2c_read(
+                fctrl->flash_i2c_client, 0x0B,
+                &flag_register, MSM_CAMERA_I2C_BYTE_DATA);
+            //pr_err("%s: flag_register=0x%x\n", __func__,flag_register);
+		}
+#endif        
 		if (rc < 0)
 			pr_err("%s:%d failed\n", __func__, __LINE__);
 	}
-
+#ifdef VENDOR_EDIT
+/*OPPO hufeng 2014-09-02 add for individual flashlight*/
+	IS_FLASH_ON = 1;
+#endif
 	return rc;
 }
 
@@ -526,6 +599,22 @@ static int32_t msm_led_get_dt_data(struct device_node *of_node,
 			pr_err("%s failed %d\n", __func__, __LINE__);
 			goto ERROR9;
 		}
+#ifdef VENDOR_EDIT
+/*OPPO 2014-08-01 hufeng add for flash engineer mode test*/
+	rc = msm_camera_get_dt_vreg_data(of_node,
+		&power_info->cam_vreg,
+		&power_info->num_vreg);
+	if (rc < 0)
+		goto ERROR8;
+	rc = msm_camera_get_dt_power_setting_data(of_node,
+		power_info->cam_vreg,
+		power_info->num_vreg,
+		power_info);
+	if (rc < 0) {
+		pr_err("%s failed %d\n", __func__, __LINE__);
+		goto ERROR8;
+	}
+#endif
 		fctrl->flashdata->slave_info->sensor_slave_addr = id_info[0];
 		fctrl->flashdata->slave_info->sensor_id_reg_addr = id_info[1];
 		fctrl->flashdata->slave_info->sensor_id = id_info[2];
@@ -708,6 +797,10 @@ int msm_flash_probe(struct platform_device *pdev,
 	cci_client = fctrl->flash_i2c_client->cci_client;
 	cci_client->cci_subdev = msm_cci_get_subdev();
 	cci_client->cci_i2c_master = fctrl->cci_i2c_master;
+#ifdef VENDOR_EDIT
+/*OPPO 2014-08-12 hufeng add to set i2c clock to 400khz*/
+	cci_client->i2c_freq_mode = I2C_FAST_MODE;
+#endif
 	if (fctrl->flashdata->slave_info->sensor_slave_addr)
 		cci_client->sid =
 			fctrl->flashdata->slave_info->sensor_slave_addr >> 1;

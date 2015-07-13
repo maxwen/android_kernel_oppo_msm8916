@@ -3865,8 +3865,13 @@ static int qpnp_leds_probe(struct spmi_device *spmi)
 
 		/* configure default state */
 		if (led->default_on) {
-			led->cdev.brightness = led->cdev.max_brightness;
+#ifdef VENDOR_EDIT
+//guoling@MM.lcddriver modify for backlight 
+            //modify for same brightness with lk
+#else
+            led->cdev.brightness = led->cdev.max_brightness;
 			__qpnp_led_work(led, led->cdev.brightness);
+#endif
 			if (led->turn_off_delay_ms > 0)
 				qpnp_led_turn_off(led);
 		} else

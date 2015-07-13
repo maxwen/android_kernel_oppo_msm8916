@@ -28,6 +28,29 @@
 #define CDBG(fmt, args...) do { } while (0)
 #endif
 
+
+#ifdef VENDOR_EDIT
+/* xianglie.liu 2014-09-05 add for add project name */
+#include <mach/oppo_project.h> 
+ unsigned char my_vcm_id =1;
+static unsigned char vcm_flag =1;
+#include <mach/device_info.h>
+#define DEVICE_VERSION_5648_SUNNY	"ov5648_sunny"
+#define DEVICE_VERSION_5648_TRULY	"ov5648_truly"
+#define DEVICE_MANUFACUTRE_5648	"OmniVision"
+/*hufeng 2014-10-15 add for 14005 devices information*/
+#define DEVICE_VERSION_IMX214	"imx214"
+#define DEVICE_VERSION_S5K5E2	 "s5k5e2 "
+#define DEVICE_MANUFACUTRE_IMX214	"Sony"
+#define DEVICE_MANUFACUTRE_S5K5E2	"SAMSUNG"
+#endif
+
+#ifdef VENDOR_EDIT
+/* nanwei.deng@Mobile Phone Software bsp.Driver, 2014/10/30  Add for 14045 charger */
+extern void opchg_check_camera_on(void);
+extern void opchg_check_camera_off(void);
+#endif /*VENDOR_EDIT*/
+
 static void msm_sensor_adjust_mclk(struct msm_camera_power_ctrl_t *ctrl)
 {
 	int idx;
@@ -436,6 +459,15 @@ int msm_sensor_power_down(struct msm_sensor_ctrl_t *s_ctrl)
 			__func__, __LINE__, power_info, sensor_i2c_client);
 		return -EINVAL;
 	}
+	
+	#if 0//def VENDOR_EDIT
+	/* nanwei.deng@Mobile Phone Software bsp.Driver, 2014/10/30  Add for 14045 charger */
+	if(is_project(OPPO_14005)||is_project(OPPO_14045))
+	{
+		opchg_check_camera_off();
+	}
+	#endif /*VENDOR_EDIT*/
+	
 	return msm_camera_power_down(power_info, sensor_device_type,
 		sensor_i2c_client);
 }
@@ -486,10 +518,252 @@ int msm_sensor_power_up(struct msm_sensor_ctrl_t *s_ctrl)
 			break;
 		}
 	}
-
+	
+	#if 0//def VENDOR_EDIT
+	/* nanwei.deng@Mobile Phone Software bsp.Driver, 2014/10/30  Add for 14045 charger */
+	if(is_project(OPPO_14005)||is_project(OPPO_14045))
+	{
+		opchg_check_camera_on();
+	}
+	#endif /*VENDOR_EDIT*/
 	return rc;
 }
 
+#ifdef VENDOR_EDIT
+/* xianglie.liu 2014-09-12 Add for actutor Compatible */
+static void get_vcm_ID(struct msm_sensor_ctrl_t *s_ctrl)
+{ 
+	uint16_t flag;
+	int i;
+	int32_t rc = 0;
+
+	if(vcm_flag >1) return;
+#ifdef VENDOR_EDIT
+/* xianglie.liu 2014-09-27 Add for actutor Compatible */
+	if(strcmp(s_ctrl->sensordata->sensor_name, "ov5648_back"))return;
+#endif
+	 
+	rc = s_ctrl->sensor_i2c_client->i2c_func_tbl->i2c_write(
+		s_ctrl->sensor_i2c_client,
+		0x0103,
+		0x01, MSM_CAMERA_I2C_BYTE_DATA);
+	rc = s_ctrl->sensor_i2c_client->i2c_func_tbl->i2c_write(
+		s_ctrl->sensor_i2c_client,
+		0x0100,
+		0x01, MSM_CAMERA_I2C_BYTE_DATA);
+	mdelay(30);
+	
+	rc = s_ctrl->sensor_i2c_client->i2c_func_tbl->i2c_write(
+		s_ctrl->sensor_i2c_client,
+		0x3d84,
+		0xc0, MSM_CAMERA_I2C_BYTE_DATA);
+	if (rc < 0) {
+		pr_err("%s: %s: ov5648_back write1 failed\n", __func__,
+			s_ctrl->sensordata->sensor_name);
+	}	
+	rc = s_ctrl->sensor_i2c_client->i2c_func_tbl->i2c_write(
+		s_ctrl->sensor_i2c_client,
+		0x3d85,
+		0x00, MSM_CAMERA_I2C_BYTE_DATA);
+	if (rc < 0) {
+		pr_err("%s: %s: ov5648_back write2 failed\n", __func__,
+			s_ctrl->sensordata->sensor_name);
+	}	
+	rc = s_ctrl->sensor_i2c_client->i2c_func_tbl->i2c_write(
+		s_ctrl->sensor_i2c_client,
+		0x3d86,
+		0x0f, MSM_CAMERA_I2C_BYTE_DATA);
+	if (rc < 0) {
+		pr_err("%s: %s: ov5648_back write3 failed\n", __func__,
+			s_ctrl->sensordata->sensor_name);
+	}	
+	rc = s_ctrl->sensor_i2c_client->i2c_func_tbl->i2c_write(
+		s_ctrl->sensor_i2c_client,
+		0x3d81,
+		0x01, MSM_CAMERA_I2C_BYTE_DATA);
+	if (rc < 0) {
+		pr_err("%s: %s: ov5648_back write4 failed\n", __func__,
+			s_ctrl->sensordata->sensor_name);
+	}	
+	mdelay(15);
+	
+#if 0
+// just for test
+	rc = s_ctrl->sensor_i2c_client->i2c_func_tbl->i2c_read(
+		s_ctrl->sensor_i2c_client,
+		0x3d84,
+		&flag, MSM_CAMERA_I2C_BYTE_DATA);
+	pr_err("vendor info : 0x3d84:id =%d\n", flag);
+	rc = s_ctrl->sensor_i2c_client->i2c_func_tbl->i2c_read(
+		s_ctrl->sensor_i2c_client,
+		0x3d85,
+		&flag, MSM_CAMERA_I2C_BYTE_DATA);
+	pr_err("vendor info : 0x3d85:id =%d\n", flag);
+	rc = s_ctrl->sensor_i2c_client->i2c_func_tbl->i2c_read(
+		s_ctrl->sensor_i2c_client,
+		0x3d86,
+		&flag, MSM_CAMERA_I2C_BYTE_DATA);
+	pr_err("vendor info : 0x3d86:id =%d\n", flag);
+#endif
+	rc = s_ctrl->sensor_i2c_client->i2c_func_tbl->i2c_read(
+		s_ctrl->sensor_i2c_client,
+		0x3d05,
+		&flag, MSM_CAMERA_I2C_BYTE_DATA);
+	if (rc < 0) {
+		pr_err("%s: %s: ov5648_back read id failed\n", __func__,
+			s_ctrl->sensordata->sensor_name);
+	}
+
+	pr_err("vendor info : 0x3d05:id =%d\n", flag);
+	
+	if ((!(flag&0x80)) && ((flag&0x7f) == 0x02))	  
+	{	  
+		for( i=0;i<16;i++)	
+		{
+       	rc = s_ctrl->sensor_i2c_client->i2c_func_tbl->i2c_write(
+       		s_ctrl->sensor_i2c_client,
+       		0x3d00+i,
+       		0x00, MSM_CAMERA_I2C_BYTE_DATA);
+       	if (rc < 0) {
+       		pr_err("%s: %s: ov5648_back write5 failed\n", __func__,
+       			s_ctrl->sensordata->sensor_name);
+       	}
+		}
+	   my_vcm_id = 2;
+	}
+	else if((!(flag&0x80)) && ((flag&0x7f) == 0x01)) 
+	{
+		for( i=0;i<16;i++)
+		{
+       	rc = s_ctrl->sensor_i2c_client->i2c_func_tbl->i2c_write(
+       		s_ctrl->sensor_i2c_client,
+       		0x3d00+i,
+       		0x00, MSM_CAMERA_I2C_BYTE_DATA);
+       	if (rc < 0) {
+       		pr_err("%s: %s: ov5648_back write6 failed\n", __func__,
+       			s_ctrl->sensordata->sensor_name);
+       	}	
+		}
+		my_vcm_id = 1;
+	}
+	else
+	{	
+			rc = s_ctrl->sensor_i2c_client->i2c_func_tbl->i2c_read(
+       	s_ctrl->sensor_i2c_client,
+       	0x3d0e,
+       	&flag, MSM_CAMERA_I2C_BYTE_DATA);
+       	if (rc < 0) {
+       		pr_err("%s: %s: ov5648_back read id failed\n", __func__,
+       			s_ctrl->sensordata->sensor_name);
+       	}
+
+			pr_err("vendor info : 0x3d0e:id =%d\n", flag);
+				
+			for( i=0;i<16;i++)	
+			{
+              	rc = s_ctrl->sensor_i2c_client->i2c_func_tbl->i2c_write(
+              		s_ctrl->sensor_i2c_client,
+              		0x3d00+i,
+              		0x00, MSM_CAMERA_I2C_BYTE_DATA);
+              	if (rc < 0) {
+              		pr_err("%s: %s: ov5648_back write7 failed\n", __func__,
+              			s_ctrl->sensordata->sensor_name);
+              	}	
+		  }	
+			if ((!(flag&0x80)) && ((flag&0x7f) == 0x02))	  
+			{	  
+                 my_vcm_id = 2;
+			}
+			else if((!(flag&0x80)) && ((flag&0x7f) == 0x01)) 
+			{
+                 my_vcm_id = 1;
+			} 				
+			else
+			{
+               	rc = s_ctrl->sensor_i2c_client->i2c_func_tbl->i2c_write(
+              		s_ctrl->sensor_i2c_client,
+              		0x3d84,
+              		0xc0, MSM_CAMERA_I2C_BYTE_DATA);
+              	if (rc < 0) {
+              		pr_err("%s: %s: ov5648_back write11 failed\n", __func__,
+              			s_ctrl->sensordata->sensor_name);
+              	}	
+              	rc = s_ctrl->sensor_i2c_client->i2c_func_tbl->i2c_write(
+              		s_ctrl->sensor_i2c_client,
+              		0x3d85,
+              		0x10, MSM_CAMERA_I2C_BYTE_DATA);
+              	if (rc < 0) {
+              		pr_err("%s: %s: ov5648_back write12 failed\n", __func__,
+              			s_ctrl->sensordata->sensor_name);
+              	}	
+              	rc = s_ctrl->sensor_i2c_client->i2c_func_tbl->i2c_write(
+              		s_ctrl->sensor_i2c_client,
+              		0x3d86,
+              		0x1f, MSM_CAMERA_I2C_BYTE_DATA);
+              	if (rc < 0) {
+              		pr_err("%s: %s: ov5648_back write13 failed\n", __func__,
+              			s_ctrl->sensordata->sensor_name);
+              	}	
+              	rc = s_ctrl->sensor_i2c_client->i2c_func_tbl->i2c_write(
+              		s_ctrl->sensor_i2c_client,
+              		0x3d81,
+              		0x01, MSM_CAMERA_I2C_BYTE_DATA);
+              	if (rc < 0) {
+              		pr_err("%s: %s: ov5648_back write14 failed\n", __func__,
+              			s_ctrl->sensordata->sensor_name);
+              	}	
+	             mdelay(15);  
+							 
+       			rc = s_ctrl->sensor_i2c_client->i2c_func_tbl->i2c_read(
+              	s_ctrl->sensor_i2c_client,
+              	0x3d07,
+              	&flag, MSM_CAMERA_I2C_BYTE_DATA);
+              	if (rc < 0) {
+              		pr_err("%s: %s: ov5648_back read id failed\n", __func__,
+              			s_ctrl->sensordata->sensor_name);
+              	}  
+
+                 pr_err("vendor info : 0x3d07:id =%d\n", flag);
+					
+            		for( i=0;i<16;i++)
+            		{
+                   	rc = s_ctrl->sensor_i2c_client->i2c_func_tbl->i2c_write(
+                   		s_ctrl->sensor_i2c_client,
+                   		0x3d00+i,
+                   		0x00, MSM_CAMERA_I2C_BYTE_DATA);
+                   	if (rc < 0) {
+                   		pr_err("%s: %s: ov5648_back write22 failed\n", __func__,
+                   			s_ctrl->sensordata->sensor_name);
+                   	}	
+            		}			
+					if ((!(flag&0x80)) && ((flag&0x7f) == 0x02))	  
+					{	  
+                      my_vcm_id = 2;
+					}
+					else if((!(flag&0x80)) && ((flag&0x7f) == 0x01)) 
+					{
+					     my_vcm_id = 1;							 
+					} 
+					else
+					{
+                   		pr_err("%s: %s: ov5648_back write24 failed\n", __func__,
+                   			s_ctrl->sensordata->sensor_name);	 
+					}						
+			}  
+	}	
+	if(1 == my_vcm_id)
+   	{
+   		register_device_proc("r_camera", DEVICE_VERSION_5648_SUNNY, DEVICE_MANUFACUTRE_5648);
+		vcm_flag ++;
+	}
+	else if(2 == my_vcm_id)
+	{
+		register_device_proc("r_camera", DEVICE_VERSION_5648_TRULY, DEVICE_MANUFACUTRE_5648);
+		vcm_flag++;
+	}
+}
+#endif
+EXPORT_SYMBOL(my_vcm_id);
 int msm_sensor_match_id(struct msm_sensor_ctrl_t *s_ctrl)
 {
 	int rc = 0;
@@ -528,6 +802,21 @@ int msm_sensor_match_id(struct msm_sensor_ctrl_t *s_ctrl)
 		pr_err("msm_sensor_match_id chip id doesnot match\n");
 		return -ENODEV;
 	}
+#ifdef VENDOR_EDIT
+/* xianglie.liu 2014-09-12 Add for actutor Compatible */
+	if(is_project(OPPO_14043))
+	{
+		get_vcm_ID(s_ctrl); 
+	}
+/*hufeng 2014-10-15 add for 14005 devices information*/
+#if 0
+	if(is_project(OPPO_14005)||is_project(OPPO_14006))
+	{
+		register_device_proc("r_camera", DEVICE_VERSION_IMX214, DEVICE_MANUFACUTRE_IMX214);
+		register_device_proc("f_camera", DEVICE_VERSION_S5K5E2, DEVICE_MANUFACUTRE_S5K5E2);
+	}
+#endif
+#endif
 	return rc;
 }
 
@@ -549,7 +838,27 @@ static void msm_sensor_stop_stream(struct msm_sensor_ctrl_t *s_ctrl)
 	mutex_unlock(s_ctrl->msm_sensor_mutex);
 	return;
 }
-
+#ifdef VENDOR_EDIT
+/* OPPO 2014-08-14 hufeng merge from 8928 for at test */
+static void at_msm_sensor_power_down(struct msm_sensor_ctrl_t *s_ctrl)
+{
+	pr_err("%s cmd is 0 \n", __func__);
+	if (msm_sensor_power_down(s_ctrl)< 0) {
+		pr_err("%s:%d error \n", __func__,__LINE__);
+		return;
+	}
+	return;
+}
+static void at_msm_sensor_power_up(struct msm_sensor_ctrl_t *s_ctrl)
+{
+	pr_err("%s cmd is 1 \n", __func__);
+	if (msm_sensor_power_up(s_ctrl)< 0) {
+		pr_err("%s:%d error \n", __func__,__LINE__);
+		return;
+	}
+	return;
+}
+#endif
 static int msm_sensor_get_af_status(struct msm_sensor_ctrl_t *s_ctrl,
 			void __user *argp)
 {
@@ -568,6 +877,19 @@ static long msm_sensor_subdev_ioctl(struct v4l2_subdev *sd,
 		pr_err("%s s_ctrl NULL\n", __func__);
 		return -EBADF;
 	}
+	/* OPPO 2014-08-14 hufeng merge from 8928 for at test */
+	#ifdef VENDOR_EDIT
+	if (cmd == 0 && arg == NULL) 
+	{
+		at_msm_sensor_power_down(s_ctrl);
+		return 0;
+	}
+	else if (cmd ==1 && arg == NULL) 
+	{
+		at_msm_sensor_power_up(s_ctrl);
+		return 0;
+	}
+	#endif
 	switch (cmd) {
 	case VIDIOC_MSM_SENSOR_CFG:
 		return s_ctrl->func_tbl->sensor_config(s_ctrl, argp);

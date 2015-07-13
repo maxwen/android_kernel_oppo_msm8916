@@ -127,7 +127,7 @@ static long msm_sensor_init_subdev_ioctl(struct v4l2_subdev *sd,
 		break;
 	}
 
-	return 0;
+	return rc;
 }
 
 static int __init msm_sensor_init_module(void)

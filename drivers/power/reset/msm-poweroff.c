@@ -94,10 +94,13 @@ static void set_dload_mode(int on)
 	dload_mode_enabled = on;
 }
 
+#ifndef VENDOR_EDIT
+/*Tong.han@BSP.group.TP modified for do not use hard-reset*/
 static bool get_dload_mode(void)
 {
 	return dload_mode_enabled;
 }
+#endif /*VENDOR_EDIT*/
 
 static void enable_emergency_dload_mode(void)
 {
@@ -181,10 +184,22 @@ static void halt_spmi_pmic_arbiter(void)
 	}
 }
 
+#ifdef VENDOR_EDIT
+/* OPPO 2013.07.09 hewei modify begin for restart mode*/
+#define FACTORY_MODE	0x77665504
+#define WLAN_MODE		0x77665505
+#define RF_MODE			0x77665506
+#define MOS_MODE		0x77665507
+#define RECOVERY_MODE   0x77665502
+#define FASTBOOT_MODE   0x77665500
+/* OPPO 2013.07.09 hewei modify end for restart mode*/
+#endif //VENDOR_EDIT
+
 static void msm_restart_prepare(const char *cmd)
 {
+#ifndef VENDOR_EDIT
 	bool need_warm_reset = false;
-
+#endif
 #ifdef CONFIG_MSM_DLOAD_MODE
 
 	/* Write download mode flags if we're panic'ing
@@ -195,7 +210,7 @@ static void msm_restart_prepare(const char *cmd)
 	set_dload_mode(download_mode &&
 			(in_panic || restart_mode == RESTART_DLOAD));
 #endif
-
+#ifndef VENDOR_EDIT
 	need_warm_reset = (get_dload_mode() ||
 					(cmd != NULL && cmd[0] != '\0'));
 
@@ -211,13 +226,19 @@ static void msm_restart_prepare(const char *cmd)
 			need_warm_reset = true;
 	}
 
+/* Tong.han modified for warm reboot. boot_reason will be lost if we use  PON_POWER_OFF_HARD_RESET*/
 	/* Hard reset the PMIC unless memory contents must be maintained. */
 	if (need_warm_reset) {
 		qpnp_pon_system_pwr_off(PON_POWER_OFF_WARM_RESET);
 	} else {
 		qpnp_pon_system_pwr_off(PON_POWER_OFF_HARD_RESET);
 	}
+#else
+	qpnp_pon_system_pwr_off(PON_POWER_OFF_WARM_RESET);
+#endif /*VENDOR_EDIT*/
 
+#ifndef VENDOR_EDIT
+/* OPPO 2013.07.09 hewei modify begin for restart mode*/
 	if (cmd != NULL) {
 		if (!strncmp(cmd, "bootloader", 10)) {
 			qpnp_pon_set_restart_reason(
@@ -244,6 +265,44 @@ static void msm_restart_prepare(const char *cmd)
 			__raw_writel(0x77665501, restart_reason);
 		}
 	}
+#else //VENDOR_EDIT
+	if (cmd != NULL) {
+		if (!strncmp(cmd, "bootloader", 10)) {
+			__raw_writel(FASTBOOT_MODE, restart_reason);
+		} else if (!strncmp(cmd, "recovery", 8)) {
+			__raw_writel(RECOVERY_MODE, restart_reason);
+		}  else if (!strncmp(cmd, "rf", 2)) {
+			__raw_writel(RF_MODE, restart_reason);
+		}   else if (!strncmp(cmd, "wlan", 4)) {
+			__raw_writel(WLAN_MODE, restart_reason);
+		}   else if (!strncmp(cmd, "mos", 3)) {
+			__raw_writel(MOS_MODE, restart_reason);
+		}   else if (!strncmp(cmd, "ftm", 3)) {
+			__raw_writel(FACTORY_MODE, restart_reason);
+		} else if (!strncmp(cmd, "oem-", 4)) {
+			unsigned long code;
+			code = simple_strtoul(cmd + 4, NULL, 16) & 0xff;
+			__raw_writel(0x6f656d00 | code, restart_reason);
+		} else if (!strncmp(cmd, "kernel", 6)) {
+            __raw_writel(0x7766550a, restart_reason);
+        } else if (!strncmp(cmd, "modem", 5)) {
+            __raw_writel(0x7766550b, restart_reason);
+        } else if (!strncmp(cmd, "android", 7)) {
+            __raw_writel(0x7766550c, restart_reason);
+		} else if (!strncmp(cmd, "edl", 3)) {
+			enable_emergency_dload_mode();
+		} else {
+			/* OPPO 2014.08.20 liushu added for reboot failure when the usb or charger is enabled*/
+			qpnp_pon_system_pwr_off(PON_POWER_OFF_WARM_RESET);
+			__raw_writel(0x77665501, restart_reason);
+			  }
+	}else {
+		/* OPPO 2014.08.20 liushu added for reboot failure when the usb or charger is enabled*/
+		qpnp_pon_system_pwr_off(PON_POWER_OFF_WARM_RESET);
+		__raw_writel(0x77665501, restart_reason);
+	}
+/* OPPO 2013.07.09 hewei modify en for restart mode*/
+#endif //VENDOR_EDIT
 
 	flush_cache_all();
 
@@ -347,6 +406,12 @@ static int msm_restart_probe(struct platform_device *pdev)
 	msm_ps_hold = devm_ioremap_resource(dev, mem);
 	if (IS_ERR(msm_ps_hold))
 		return PTR_ERR(msm_ps_hold);
+
+#ifdef VENDOR_EDIT
+/* OPPO 2013.07.09 hewei added begin for default restart reason*/
+	__raw_writel(0x7766550a, restart_reason);
+/* OPPO 2013.07.09 hewei added end for default restart reason*/
+#endif //VENDOR_EDIT
 
 	pm_power_off = do_msm_poweroff;
 	arm_pm_restart = do_msm_restart;

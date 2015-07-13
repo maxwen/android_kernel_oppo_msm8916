@@ -32,6 +32,7 @@
 #include <sound/pcm_params.h>
 #include <sound/q6core.h>
 #include <linux/slab.h>
+#include <mach/oppo_project.h>
 
 #include "msm-pcm-routing-v2.h"
 #include "msm-qti-pp-config.h"
@@ -1831,6 +1832,9 @@ static const struct snd_kcontrol_new mmul2_mixer_controls[] = {
 	SOC_SINGLE_EXT("SLIM_0_TX", MSM_BACKEND_DAI_SLIMBUS_0_TX,
 	MSM_FRONTEND_DAI_MULTIMEDIA2, 1, 0, msm_routing_get_audio_mixer,
 	msm_routing_put_audio_mixer),
+	SOC_SINGLE_EXT("QUAT_MI2S_TX", MSM_BACKEND_DAI_QUATERNARY_MI2S_TX,
+	MSM_FRONTEND_DAI_MULTIMEDIA2, 1, 0, msm_routing_get_audio_mixer,
+	msm_routing_put_audio_mixer),
 };
 
 static const struct snd_kcontrol_new mmul4_mixer_controls[] = {
@@ -2733,6 +2737,17 @@ static const struct snd_kcontrol_new quat_mi2s_rx_port_mixer_controls[] = {
 	SOC_SINGLE_EXT("INTERNAL_FM_TX", MSM_BACKEND_DAI_QUATERNARY_MI2S_RX,
 	MSM_BACKEND_DAI_INT_FM_TX, 1, 0, msm_routing_get_port_mixer,
 	msm_routing_put_port_mixer),
+	/*OPPO 2014-08-05 zhzhyon Add for quat i2s loopback*/
+	SOC_SINGLE_EXT("TERT_MI2S_TX_QUAT", MSM_BACKEND_DAI_QUATERNARY_MI2S_RX,
+	MSM_BACKEND_DAI_TERTIARY_MI2S_TX, 1, 0, msm_routing_get_port_mixer,
+	msm_routing_put_port_mixer),
+	/*OPPO 2014-08-05 zhzhyon Add end*/
+	/*OPPO 2014-08-28 zhzhyon Add for quat i2s loopback*/
+	SOC_SINGLE_EXT("SLIM_0_TX", MSM_BACKEND_DAI_QUATERNARY_MI2S_RX,
+	MSM_BACKEND_DAI_SLIMBUS_0_TX, 1, 0, msm_routing_get_port_mixer,
+	msm_routing_put_port_mixer),
+	/*OPPO 2014-08-28 zhzhyon Add end*/
+
 };
 
 static const struct snd_kcontrol_new slim_fm_switch_mixer_controls =
@@ -2764,6 +2779,14 @@ static const struct snd_kcontrol_new pri_mi2s_rx_switch_mixer_controls =
 	SOC_SINGLE_EXT("Switch", SND_SOC_NOPM,
 	0, 1, 0, msm_routing_get_switch_mixer,
 	msm_routing_put_switch_mixer);
+
+/*OPPO 2014-08-05 zhzhyon Add for loopback*/
+static const struct snd_kcontrol_new quat_mi2s_rx_switch_mixer_controls =
+	SOC_SINGLE_EXT("Switch", SND_SOC_NOPM,
+	0, 1, 0, msm_routing_get_switch_mixer,
+	msm_routing_put_switch_mixer);
+
+/*OPPO 2014-08-05 zhzhyon Add end*/
 
 static const struct soc_enum lsm_mux_enum =
 	SOC_ENUM_SINGLE_EXT(ARRAY_SIZE(mad_audio_mux_text), mad_audio_mux_text);
@@ -3108,6 +3131,12 @@ static const struct snd_soc_dapm_widget msm_qdsp6_widgets[] = {
 		"Secondary MI2S_RX Hostless Playback",
 		0, 0, 0, 0),
 
+	/*OPPO 2014-08-05 zhzhyon Add for loopback*/
+	SND_SOC_DAPM_AIF_IN("TERT_MI2S_DL_HL",
+		"Tertiary MI2S_RX Hostless Playback",
+		0, 0, 0, 0),	
+	/*OPPO 2014-08-05 zhzhyon Add end*/
+
 	SND_SOC_DAPM_AIF_IN("AUXPCM_DL_HL", "AUXPCM_HOSTLESS Playback",
 		0, 0, 0, 0),
 	SND_SOC_DAPM_AIF_OUT("AUXPCM_UL_HL", "AUXPCM_HOSTLESS Capture",
@@ -3240,6 +3269,10 @@ static const struct snd_soc_dapm_widget msm_qdsp6_widgets[] = {
 				&pcm_rx_switch_mixer_controls),
 	SND_SOC_DAPM_SWITCH("PRI_MI2S_RX_DL_HL", SND_SOC_NOPM, 0, 0,
 				&pri_mi2s_rx_switch_mixer_controls),
+	/*OPPO 2014-08-05 zhzhyon Add for quat i2s loopback*/
+	SND_SOC_DAPM_SWITCH("QUAT_MI2S_RX_DL_HL", SND_SOC_NOPM, 0, 0,
+				&quat_mi2s_rx_switch_mixer_controls),
+	/*OPPO 2014-08-05 zhzhyon Add end*/
 
 	/* Mux Definitions */
 	SND_SOC_DAPM_MUX("LSM1 MUX", SND_SOC_NOPM, 0, 0, &lsm1_mux),
@@ -3457,6 +3490,19 @@ static const struct snd_soc_dapm_widget msm_qdsp6_widgets[] = {
 		&ext_ec_ref_mux_ul9),
 };
 
+/*OPPO 2014-09-12 zhzhyon Add for 14005 and 14045 loopback*/
+#ifdef VENDOR_EDIT
+static const struct snd_soc_dapm_route intercon_tert_i2s[] = 
+{
+	{"QUAT_MI2S_RX_DL_HL", "Switch", "TERT_MI2S_DL_HL"},
+};
+static const struct snd_soc_dapm_route intercon_slim[] = 
+{
+	{"QUAT_MI2S_RX_DL_HL", "Switch", "SLIM0_DL_HL"},
+};
+#endif
+/*OPPO 2014-09-12 zhzhyon Add end*/
+
 static const struct snd_soc_dapm_route intercon[] = {
 	{"PRI_RX Audio Mixer", "MultiMedia1", "MM_DL1"},
 	{"PRI_RX Audio Mixer", "MultiMedia2", "MM_DL2"},
@@ -3599,6 +3645,7 @@ static const struct snd_soc_dapm_route intercon[] = {
 	{"MultiMedia2 Mixer", "MI2S_TX", "MI2S_TX"},
 	{"MultiMedia5 Mixer", "MI2S_TX", "MI2S_TX"},
 	{"MultiMedia1 Mixer", "QUAT_MI2S_TX", "QUAT_MI2S_TX"},
+	{"MultiMedia2 Mixer", "QUAT_MI2S_TX", "QUAT_MI2S_TX"},
 	{"MultiMedia1 Mixer", "TERT_MI2S_TX", "TERT_MI2S_TX"},
 	{"MultiMedia1 Mixer", "SLIM_0_TX", "SLIMBUS_0_TX"},
 	{"MultiMedia1 Mixer", "AUX_PCM_UL_TX", "AUX_PCM_TX"},
@@ -4044,6 +4091,14 @@ static const struct snd_soc_dapm_route intercon[] = {
 	{"PRI_MI2S_UL_HL", NULL, "PRI_MI2S_TX"},
 	{"SEC_MI2S_RX", NULL, "SEC_MI2S_DL_HL"},
 	{"PRI_MI2S_RX", NULL, "PRI_MI2S_DL_HL"},
+	/*OPPO 2014-08-05 zhzhyon Add for quat i2s loopback*/
+	//{"QUAT_MI2S_RX_DL_HL", "Switch", "TERT_MI2S_DL_HL"},
+	{"QUAT_MI2S_RX", NULL, "QUAT_MI2S_RX_DL_HL"},
+	/*OPPO 2014-08-05 zhzhyon Add end*/
+
+	/*OPPO 2014-08-28 zhzhyon Add for reason*/
+	//{"QUAT_MI2S_RX_DL_HL", "Switch", "SLIM0_DL_HL"},
+	/*OPPO 2014-08-28 zhzhyon Add end*/
 
 	{"SLIMBUS_0_RX Port Mixer", "INTERNAL_FM_TX", "INT_FM_TX"},
 	{"SLIMBUS_0_RX Port Mixer", "SLIM_0_TX", "SLIMBUS_0_TX"},
@@ -4157,7 +4212,12 @@ static const struct snd_soc_dapm_route intercon[] = {
 	{"QUAT_MI2S_RX Port Mixer", "PRI_MI2S_TX", "PRI_MI2S_TX"},
 	{"QUAT_MI2S_RX Port Mixer", "INTERNAL_FM_TX", "INT_FM_TX"},
 	{"QUAT_MI2S_RX", NULL, "QUAT_MI2S_RX Port Mixer"},
-
+	/*OPPO 2014-08-05 zhzhyon Add for quat i2s loopback*/
+	{"QUAT_MI2S_RX Port Mixer", "TERT_MI2S_TX_QUAT", "TERT_MI2S_TX"},
+	/*OPPO 2014-08-05 zhzhyon Add end*/
+	/*OPPO 2014-08-28 zhzhyon Add for loopback*/
+	{"QUAT_MI2S_RX Port Mixer", "SLIM_0_TX", "SLIMBUS_0_TX"},
+	/*OPPO 2014-08-28 zhzhyon Add end*/
 	/* Backend Enablement */
 
 	{"BE_OUT", NULL, "PRI_I2S_RX"},
@@ -4402,6 +4462,21 @@ static int msm_routing_probe(struct snd_soc_platform *platform)
 {
 	snd_soc_dapm_new_controls(&platform->dapm, msm_qdsp6_widgets,
 			   ARRAY_SIZE(msm_qdsp6_widgets));
+	/*OPPO 2014-09-12 zhzhyon Add for 14045 and 14005 loopback*/
+	#ifdef VENDOR_EDIT
+	if(is_project(OPPO_14005) ||is_project(OPPO_14006))
+	{
+		snd_soc_dapm_add_routes(&platform->dapm, intercon_slim,
+			ARRAY_SIZE(intercon_slim));
+	}
+	else
+	{
+		snd_soc_dapm_add_routes(&platform->dapm, intercon_tert_i2s,
+			ARRAY_SIZE(intercon_tert_i2s));
+
+	}
+	#endif
+	/*OPPO 2014-09-12 zhzhyon Add end*/
 	snd_soc_dapm_add_routes(&platform->dapm, intercon,
 		ARRAY_SIZE(intercon));
 

@@ -35,6 +35,10 @@
 #include <linux/qcom/diag_dload.h>
 
 #include "gadget_chips.h"
+#ifdef VENDOR_EDIT
+//Zhilong.Zhang@OnlineRd.Driver, 2013/12/19, Add for support mass storage in recovery mode
+#include <mach/oppo_boot_mode.h>
+#endif /* VENDOR_EDIT */
 
 #include "f_fs.c"
 #ifdef CONFIG_SND_PCM
@@ -2311,7 +2315,19 @@ static int mass_storage_function_init(struct android_usb_function *f,
 
 	config->fsg.nluns = 1;
 	snprintf(name[0], MAX_LUN_NAME, "lun");
+#ifndef VENDOR_EDIT
+//Zhilong.Zhang@OnlineRd.Driver, 2013/12/19, Modify for support CD-ROM in normal mode and support mass storage in recovery mode
 	config->fsg.luns[0].removable = 1;
+#else /* VENDOR_EDIT */
+	if(get_boot_mode() == MSM_BOOT_MODE__RECOVERY) {
+		config->fsg.luns[0].removable = 1;
+	}
+	else {
+		config->fsg.luns[0].cdrom = 1;
+		config->fsg.luns[0].ro = 1;
+		config->fsg.luns[0].removable = 0;
+	}
+#endif /* VENDOR_EDIT */
 
 	if (dev->pdata && dev->pdata->cdrom) {
 		config->fsg.luns[config->fsg.nluns].cdrom = 1;

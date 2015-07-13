@@ -990,7 +990,10 @@ static int msm_eeprom_platform_probe(struct platform_device *pdev)
 	cci_client->sid = eb_info->i2c_slaveaddr >> 1;
 	cci_client->retries = 3;
 	cci_client->id_map = 0;
-
+#ifdef VENDOR_EDIT
+	/*hufeng add 2014-11-03 to make eeprom use i2c_fast_mode*/
+	cci_client->i2c_freq_mode = 1;
+#endif
 	rc = of_property_read_string(of_node, "qcom,eeprom-name",
 		&eb_info->eeprom_name);
 	CDBG("%s qcom,eeprom-name %s, rc %d\n", __func__,

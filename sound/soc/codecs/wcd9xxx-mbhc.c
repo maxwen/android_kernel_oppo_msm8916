@@ -36,6 +36,8 @@
 #include <linux/kernel.h>
 #include <linux/gpio.h>
 #include <linux/input.h>
+#include <mach/oppo_project.h>
+#include <linux/wakelock.h>
 #include "wcd9320.h"
 #include "wcd9306.h"
 #include "wcd9xxx-mbhc.h"
@@ -68,7 +70,13 @@
 #define ANC_HPH_DETECT_PLUG_TIME_MS (5 * 1000)
 #define HS_DETECT_PLUG_INERVAL_MS 100
 #define SWCH_REL_DEBOUNCE_TIME_MS 50
+/*OPPO 2014-10-23 zhzhyon Modify for headset detect*/
+#ifndef VENDOR_EDIT
 #define SWCH_IRQ_DEBOUNCE_TIME_US 5000
+#else
+#define SWCH_IRQ_DEBOUNCE_TIME_US 150000
+#endif
+/*OPPO 2014-10-23 zhzhyon Modify end*/
 #define BTN_RELEASE_DEBOUNCE_TIME_MS 25
 
 #define GND_MIC_SWAP_THRESHOLD 2
@@ -119,11 +127,22 @@
 
 /* RX_HPH_CNP_WG_TIME increases by 0.24ms */
 #define WCD9XXX_WG_TIME_FACTOR_US	240
-
+/*OPPO 2013-03-28 zhzhyon Modify for headset detect*/
+#ifndef VENDOR_EDIT
 #define WCD9XXX_V_CS_HS_MAX 500
+#else
+#define WCD9XXX_V_CS_HS_MAX 1200
+#endif
+/*OPPO 2013-03-28 zhzhyon Modify end*/
 #define WCD9XXX_V_CS_NO_MIC 5
 #define WCD9XXX_MB_MEAS_DELTA_MAX_MV 80
+/*OPPO 2014-08-28 zhzhyon Modify for headset detect*/
+#if 0
 #define WCD9XXX_CS_MEAS_DELTA_MAX_MV 12
+#else
+#define WCD9XXX_CS_MEAS_DELTA_MAX_MV 100
+#endif
+/*OPPO 2014-08-28 zhzhyon Modify end*/
 
 static int impedance_detect_en;
 module_param(impedance_detect_en, int,
@@ -176,6 +195,21 @@ enum wcd9xxx_current_v_idx {
 	WCD9XXX_CURRENT_V_B1_HU,
 	WCD9XXX_CURRENT_V_BR_H,
 };
+
+/*OPPO 2014-09-01 zhzhyon Add for headset detect*/
+#ifdef VENDOR_EDIT
+static int headset_detect_inited = 0;
+static struct wake_lock headset_detect;
+#endif
+/*OPPO 2014-09-01 zhzhyon Add end*/
+
+
+/*OPPO 2014-09-01 zhzhyon Add for headset key*/
+#ifdef VENDOR_EDIT
+static int headset_key_inited = 0;
+static struct wake_lock headset_key;
+#endif
+/*OPPO 2014-09-01 zhzhyon Add end*/
 
 static int wcd9xxx_detect_impedance(struct wcd9xxx_mbhc *mbhc, uint32_t *zl,
 				    uint32_t *zr);
@@ -817,7 +851,18 @@ static void wcd9xxx_insert_detect_setup(struct wcd9xxx_mbhc *mbhc, bool ins)
 	/* Re-enable detection */
 	snd_soc_update_bits(mbhc->codec, WCD9XXX_A_MBHC_INSERT_DETECT, 1, 1);
 }
-
+/*OPPO 2014-09-09 zhzhyon Add for dengnanwei*/
+#ifdef VENDOR_EDIT
+enum {
+VOOC_CHARGER_MODE,
+HEADPHONE_MODE,
+NORMAL_CHARGER_MODE,
+};
+extern int opchg_set_switch_mode(u8 mode);
+extern void opchg_check_earphone_on(void);
+extern void opchg_check_earphone_off(void);
+#endif
+/*OPPO 2014-09-09 zhzhyon Add end*/
 /* called under codec_resource_lock acquisition */
 static void wcd9xxx_report_plug(struct wcd9xxx_mbhc *mbhc, int insertion,
 				enum snd_jack_types jack_type)
@@ -836,10 +881,14 @@ static void wcd9xxx_report_plug(struct wcd9xxx_mbhc *mbhc, int insertion,
 		if (wcd9xxx_cancel_btn_work(mbhc))
 			pr_debug("%s: button press is canceled\n", __func__);
 		else if (mbhc->buttons_pressed) {
+			/*OPPO 2014-10-17 zhzhyon Delete for headset remove*/
+			#ifndef VENDOR_EDIT
 			pr_debug("%s: release of button press%d\n",
 				 __func__, jack_type);
 			wcd9xxx_jack_report(mbhc, &mbhc->button_jack, 0,
 					    mbhc->buttons_pressed);
+			#endif
+			/*OPPO 2014-10-17 zhzhyon Delete end*/
 			mbhc->buttons_pressed &=
 				~WCD9XXX_JACK_BUTTON_MASK;
 		}
@@ -860,6 +909,13 @@ static void wcd9xxx_report_plug(struct wcd9xxx_mbhc *mbhc, int insertion,
 		hphlocp_off_report(mbhc, SND_JACK_OC_HPHL);
 		mbhc->current_plug = PLUG_TYPE_NONE;
 		mbhc->polling_active = false;
+		/*OPPO 2014-08-26 zhzhyon Add for reason*/
+		if(is_project(OPPO_14005))
+		{
+			gpio_direction_output(mbhc->mbhc_cfg->ap_audio_enable_gpio, 0);
+			opchg_check_earphone_off();
+		}
+		/*OPPO 2014-08-26 zhzhyon Add end*/
 	} else {
 		/*
 		 * Report removal of current jack type.
@@ -915,7 +971,19 @@ static void wcd9xxx_report_plug(struct wcd9xxx_mbhc *mbhc, int insertion,
 		if (mbhc->impedance_detect && impedance_detect_en)
 			wcd9xxx_detect_impedance(mbhc, &mbhc->zl, &mbhc->zr);
 
-		pr_debug("%s: Reporting insertion %d(%x)\n", __func__,
+		/*OPPO 2014-08-26 zhzhyon Add for reason*/
+		if(is_project(OPPO_14005))
+		{         
+			 gpio_direction_output(mbhc->mbhc_cfg->ap_audio_enable_gpio, 1);
+			 opchg_set_switch_mode(HEADPHONE_MODE);
+			 opchg_check_earphone_on();
+			//gpio_direction_output(mbhc->mbhc_cfg->select_lr_gpio1, 1);
+			//gpio_direction_output(mbhc->mbhc_cfg->select_lr_gpio2, 0);
+		}
+		/*OPPO 2014-08-26 zhzhyon Add end*/
+
+
+		pr_err("%s: Reporting insertion %d(%x)\n", __func__,
 			 jack_type, mbhc->hph_status);
 		wcd9xxx_jack_report(mbhc, &mbhc->headset_jack,
 				    mbhc->hph_status, WCD9XXX_JACK_MASK);
@@ -1418,6 +1486,12 @@ wcd9xxx_cs_find_plug_type(struct wcd9xxx_mbhc *mbhc,
 
 		vdce = __wcd9xxx_codec_sta_dce_v(mbhc, true, d->dce,
 						 dce_z, (u32)mb_mv);
+		/*OPPO 2014-08-26 zhzhyon Add for headset detect*/
+		#ifdef VENDOR_EDIT
+		pr_err("headset detect adc value = %d\n",vdce);
+		vdce = vdce > 0 ? vdce:(-vdce);
+		#endif
+		/*OPPO 2014-08-26 zhzhyon Add end*/
 		d->_vdces = vdce;
 		if (d->_vdces < no_mic)
 			d->_type = PLUG_TYPE_HEADPHONE;
@@ -1439,6 +1513,8 @@ wcd9xxx_cs_find_plug_type(struct wcd9xxx_mbhc *mbhc,
 			if (!minv || minv > d->_vdces)
 				minv = d->_vdces;
 		}
+		/*OPPO 2014-03-28 zhzhyon Delete for headset detect*/
+		#ifndef VENDOR_EDIT
 		if ((!d->mic_bias &&
 		    (d->_vdces >= WCD9XXX_CS_MEAS_INVALD_RANGE_LOW_MV &&
 		     d->_vdces <= WCD9XXX_CS_MEAS_INVALD_RANGE_HIGH_MV)) ||
@@ -1449,6 +1525,8 @@ wcd9xxx_cs_find_plug_type(struct wcd9xxx_mbhc *mbhc,
 			type = PLUG_TYPE_INVALID;
 			goto exit;
 		}
+		#endif
+		/*OPPO 2014-03-28 zhzhyon Delete end*/
 	}
 
 	delta_thr = ((highhph_cnt == sz) || highhph) ?
@@ -1541,6 +1619,14 @@ wcd9xxx_cs_find_plug_type(struct wcd9xxx_mbhc *mbhc,
 		mbhc->micbias_enable = true;
 
 exit:
+	/*OPPO 2014-05-20 zhzhyon Add for headset detect*/
+	#ifdef VENDOR_EDIT
+	if(type == PLUG_TYPE_GND_MIC_SWAP)
+	{
+		type = PLUG_TYPE_INVALID;
+	}
+	#endif
+	/*OPPO 2014-05-20 zhzhyon Add end*/
 	pr_debug("%s: Plug type %d detected\n", __func__, type);
 	return type;
 }
@@ -1743,7 +1829,7 @@ void wcd9xxx_turn_onoff_current_source(struct wcd9xxx_mbhc *mbhc,
 	codec = mbhc->codec;
 
 	if (on) {
-		pr_debug("%s: enabling current source\n", __func__);
+		pr_err("%s: enabling current source\n", __func__);
 		/* Nsc to 9 */
 		snd_soc_update_bits(codec, WCD9XXX_A_CDC_MBHC_B1_CTL,
 				    0x78, 0x48);
@@ -1768,7 +1854,7 @@ void wcd9xxx_turn_onoff_current_source(struct wcd9xxx_mbhc *mbhc,
 		/* Disconnect MBHC Override from MicBias and LDOH */
 		snd_soc_update_bits(codec, WCD9XXX_A_MAD_ANA_CTRL, 0x10, 0x00);
 	} else {
-		pr_debug("%s: disabling current source\n", __func__);
+		pr_err("%s: disabling current source\n", __func__);
 		/* Connect MBHC Override from MicBias and LDOH */
 		snd_soc_update_bits(codec, WCD9XXX_A_MAD_ANA_CTRL, 0x10, 0x10);
 		/* INS_DET_ISRC_CTL to acdb value */
@@ -2342,9 +2428,13 @@ static void wcd9xxx_find_plug_and_report(struct wcd9xxx_mbhc *mbhc,
 			wcd9xxx_cleanup_hs_polling(mbhc);
 			pr_debug("setup mic trigger for further detection\n");
 			mbhc->lpi_enabled = true;
+			/*OPPO 2014-08-27 zhzhyon Delete for reason*/
+			#if 0
 			wcd9xxx_enable_hs_detect(mbhc, 1, MBHC_USE_MB_TRIGGER |
 							  MBHC_USE_HPHL_TRIGGER,
 						 false);
+			#endif
+			/*OPPO 2014-08-27 zhzhyon Delete end*/
 		}
 	} else {
 		WARN(1, "Unexpected current plug_type %d, plug_type %d\n",
@@ -2391,10 +2481,18 @@ static void wcd9xxx_mbhc_decide_swch_plug(struct wcd9xxx_mbhc *mbhc)
 	if (plug_type == PLUG_TYPE_INVALID ||
 	    plug_type == PLUG_TYPE_GND_MIC_SWAP) {
 		wcd9xxx_cleanup_hs_polling(mbhc);
+		/*OPPO 2014-08-26 zhzhyon Delete for headset detect*/
+		#if 1
 		wcd9xxx_schedule_hs_detect_plug(mbhc,
 						&mbhc->correct_plug_swch);
+		#endif
+		/*OPPO 2014-08-26 zhzhyon Delete end*/
 	} else if (plug_type == PLUG_TYPE_HEADPHONE) {
+		/*OPPO 2014-08-26 zhzhyon Delete for headset detect*/
+		#if 0
 		wcd9xxx_report_plug(mbhc, 1, SND_JACK_HEADPHONE);
+		#endif
+		/*OPPO 2014-08-26 zhzhyon Delete end*/
 		wcd9xxx_cleanup_hs_polling(mbhc);
 		wcd9xxx_schedule_hs_detect_plug(mbhc,
 						&mbhc->correct_plug_swch);
@@ -2758,7 +2856,10 @@ static irqreturn_t wcd9xxx_hs_insert_irq(int irq, void *data)
 	struct wcd9xxx_mbhc *mbhc = data;
 	struct snd_soc_codec *codec = mbhc->codec;
 
-	pr_debug("%s: enter\n", __func__);
+	pr_err("%s: enter\n", __func__);
+	/*OPPO 2014-08-26 zhzhyon Add for headset*/
+	return 0;
+	/*OPPO 2014-08-26 zhzhyon Add end*/
 	WCD9XXX_BCL_LOCK(mbhc->resmgr);
 	wcd9xxx_disable_irq(mbhc->resmgr->core_res, mbhc->intr_ids->insertion);
 
@@ -3009,6 +3110,12 @@ static void wcd9xxx_correct_swch_plug(struct work_struct *work)
 	unsigned long timeout;
 	int retry = 0, pt_gnd_mic_swap_cnt = 0;
 	int highhph_cnt = 0;
+
+	/*OPPO 2014-03-27 zhzhyon Add for headset detect*/
+	#ifdef VENDOR_EDIT
+	int headp_count = 0;
+	#endif
+	/*OPPO 2014-03-27 zhzhyon Add end*/	
 	bool correction = false;
 	bool current_source_enable;
 	bool wrk_complete = true, highhph = false;
@@ -3081,6 +3188,11 @@ static void wcd9xxx_correct_swch_plug(struct work_struct *work)
 			    mbhc->current_plug == PLUG_TYPE_NONE) {
 				wcd9xxx_report_plug(mbhc, 1,
 						    SND_JACK_HEADPHONE);
+				/*OPPO 2014-05-01 zhzhyon Add for headset detect*/
+				#ifdef VENDOR_EDIT  
+				break;
+				#endif
+				/*OPPO 2014-05-01 zhzhyon Add end*/
 			}
 		} else if (plug_type == PLUG_TYPE_HEADPHONE) {
 			pr_debug("Good headphone detected, continue polling\n");
@@ -3089,8 +3201,21 @@ static void wcd9xxx_correct_swch_plug(struct work_struct *work)
 					wcd9xxx_report_plug(mbhc, 1,
 							    SND_JACK_HEADPHONE);
 			} else if (mbhc->current_plug == PLUG_TYPE_NONE) {
+				/*OPPO 2014-03-27 zhzhyon Modify for headset detect*/
+				#ifndef VENDOR_EDIT
 				wcd9xxx_report_plug(mbhc, 1,
 						    SND_JACK_HEADPHONE);
+				#else
+				headp_count++;
+				if(headp_count == 2)
+				{
+					WCD9XXX_BCL_LOCK(mbhc->resmgr);
+					wcd9xxx_find_plug_and_report(mbhc, plug_type);
+					WCD9XXX_BCL_UNLOCK(mbhc->resmgr);
+					break;
+				}
+				#endif
+				/*OPPO 2014-03-27 zhzhyon Modify end*/
 			}
 		} else if (plug_type == PLUG_TYPE_HIGH_HPH) {
 			pr_debug("%s: High HPH detected, continue polling\n",
@@ -3288,6 +3413,11 @@ static irqreturn_t wcd9xxx_mech_plug_detect_irq(int irq, void *data)
 {
 	int r = IRQ_HANDLED;
 	struct wcd9xxx_mbhc *mbhc = data;
+	/*OPPO 2014-09-01 zhzhyon Add for headset detect*/
+	#ifdef VENDOR_EDIT
+	wake_lock(&headset_detect);
+	#endif
+	/*OPPO 2014-09-01 zhzhyon Add end*/
 
 	pr_debug("%s: enter\n", __func__);
 	if (unlikely(wcd9xxx_lock_sleep(mbhc->resmgr->core_res) == false)) {
@@ -3295,14 +3425,26 @@ static irqreturn_t wcd9xxx_mech_plug_detect_irq(int irq, void *data)
 		r = IRQ_NONE;
 	} else {
 		/* Call handler */
+		/*OPPO 2014-08-28 zhzhyon Add for headset detect*/
+		if(is_project(OPPO_14005))
+		{
+			//gpio_direction_output(mbhc->mbhc_cfg->ap_audio_enable_gpio, 1);
+		}
+		/*OPPO 2014-08-28 zhzhyon Add end*/
 		wcd9xxx_swch_irq_handler(mbhc);
 		wcd9xxx_unlock_sleep(mbhc->resmgr->core_res);
 	}
 
 	pr_debug("%s: leave %d\n", __func__, r);
+	/*OPPO 2014-09-01 zhzhyon Add for headset detect*/
+	#ifdef VENDOR_EDIT
+	wake_unlock(&headset_detect);
+	#endif
+	/*OPPO 2014-09-01 zhzhyon Add end*/
 	return r;
 }
-
+/*OPPO 2014-09-01 zhzhyon Delete for headset key*/
+#ifdef VENDOR_EDIT
 static int wcd9xxx_is_false_press(struct wcd9xxx_mbhc *mbhc)
 {
 	s16 mb_v;
@@ -3348,6 +3490,8 @@ static int wcd9xxx_is_false_press(struct wcd9xxx_mbhc *mbhc)
 
 	return r;
 }
+#endif
+/*OPPO 2014-09-01 zhzhyon Delete end*/
 
 /* called under codec_resource_lock acquisition */
 static int wcd9xxx_determine_button(const struct wcd9xxx_mbhc *mbhc,
@@ -3528,6 +3672,17 @@ irqreturn_t wcd9xxx_dce_handler(int irq, void *data)
 
 	pr_debug("%s: enter\n", __func__);
 
+	/*OPPO 2014-09-01 zhzhyon Add for debug*/
+	#ifdef VENDOR_EDIT
+	printk(KERN_INFO "headset mic key press\n");
+	#endif
+	/*OPPO 2014-09-01 zhzhyon Add end*/
+	/*OPPO 2014-09-01 zhzhyon Add for reason*/
+	#ifdef VENDOR_EDIT
+	wake_lock_timeout(&headset_key, 500);
+	#endif
+	/*OPPO 2014-09-01 zhzhyon Add end*/
+	
 	WCD9XXX_BCL_LOCK(mbhc->resmgr);
 	mbhc_status = snd_soc_read(codec, WCD9XXX_A_CDC_MBHC_B1_STATUS) & 0x3E;
 
@@ -3672,6 +3827,11 @@ irqreturn_t wcd9xxx_dce_handler(int irq, void *data)
 		}
 	}
 
+	/*OPPO 2014-09-01 zhzhyon Add for headset key*/
+	#ifdef VENDOR_EDIT
+	btn = 0;
+	#endif
+	/*OPPO 2014-09-01 zhzhyon Add end*/
 	if (btn >= 0) {
 		if (mbhc->in_swch_irq_handler) {
 			pr_debug(
@@ -3723,10 +3883,17 @@ static irqreturn_t wcd9xxx_release_handler(int irq, void *data)
 			wcd9xxx_jack_report(mbhc, &mbhc->button_jack, 0,
 					    mbhc->buttons_pressed);
 		} else {
-			if (wcd9xxx_is_false_press(mbhc)) {
-				pr_debug("%s: Fake button press interrupt\n",
+			/*OPPO 2014-09-01 zhzhyon Delete for headset key*/
+			#ifdef VENDOR_EDIT
+			if (wcd9xxx_is_false_press(mbhc)) 
+			{
+				pr_err("%s: Fake button press interrupt\n",
 					 __func__);
-			} else {
+			} 
+			else 
+			#endif
+			/*OPPO 2014-06-01 zhzhyon Delete end*/
+			{
 				if (mbhc->in_swch_irq_handler) {
 					pr_debug("%s: Switch irq kicked in, ignore\n",
 						 __func__);
@@ -4108,6 +4275,25 @@ static int wcd9xxx_setup_jack_detect_irq(struct wcd9xxx_mbhc *mbhc)
 {
 	int ret = 0;
 	void *core_res = mbhc->resmgr->core_res;
+	
+	/*OPPO 2014-09-01 zhzhyon Add for headset detect*/
+	#ifdef VENDOR_EDIT
+	if (!headset_detect_inited) {
+		headset_detect_inited = 1;
+		wake_lock_init(&headset_detect, WAKE_LOCK_SUSPEND,	"headset_detect");
+	}
+	#endif
+	/*OPPO 2014-09-01 zhzhyon Add end*/
+
+	
+	/*OPPO 2014-09-01 zhzhyon Add for reason*/
+	#ifdef VENDOR_EDIT
+	if (!headset_key_inited) {
+		headset_key_inited = 1;
+		wake_lock_init(&headset_key, WAKE_LOCK_SUSPEND,	"headset_key");
+	}
+	#endif
+	/*OPPO 2014-09-01 zhzhyon Add end*/
 
 	if (mbhc->mbhc_cfg->gpio) {
 		ret = request_threaded_irq(mbhc->mbhc_cfg->gpio_irq, NULL,

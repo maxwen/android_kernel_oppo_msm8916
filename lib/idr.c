@@ -390,6 +390,40 @@ int __idr_get_new_above(struct idr *idp, void *ptr, int starting_id, int *id)
 EXPORT_SYMBOL(__idr_get_new_above);
 
 /**
+ * idr_get_new - allocate new idr entry
+ * @idp: idr handle
+ * @ptr: pointer you want associated with the id
+ * @id: pointer to the allocated handle
+ *
+ * If allocation from IDR's private freelist fails, idr_get_new_above() will
+ * return %-EAGAIN.  The caller should retry the idr_pre_get() call to refill
+ * IDR's preallocation and then retry the idr_get_new_above() call.
+ *
+ * If the idr is full idr_get_new_above() will return %-ENOSPC.
+ *
+ * @id returns a value in the range %0 ... %0x7fffffff
+ */
+ 
+#ifdef VENDOR_EDIT
+#define _idr_rc_to_errno(rc) ((rc) == -1 ? -EAGAIN : -ENOSPC)
+int oppo_idr_get_new(struct idr *idp, void *ptr, int *id)
+{
+	int rv;
+
+	rv = __idr_get_new_above(idp, ptr, 0, id);
+	/*
+	 * This is a cheap hack until the IDR code can be fixed to
+	 * return proper error values.
+	 */
+	if (rv < 0)
+		return _idr_rc_to_errno(rv);
+	*id = rv;
+	return 0;
+}
+EXPORT_SYMBOL(oppo_idr_get_new);
+#endif
+
+/**
  * idr_preload - preload for idr_alloc()
  * @gfp_mask: allocation mask to use for preloading
  *

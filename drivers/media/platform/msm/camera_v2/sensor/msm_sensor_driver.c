@@ -29,6 +29,21 @@
 
 #define SENSOR_MAX_MOUNTANGLE (360)
 
+#ifdef VENDOR_EDIT
+#include <mach/oppo_project.h> 
+#include <mach/device_info.h>
+/*liubin 2014-10-24 add for 14037/14039/14040 devices information*/
+#define DEVICE_VERSION_IMX179		"imx179"
+#define DEVICE_MANUFACUTRE_IMX179	"Sony"
+#define DEVICE_VERSION_5648_SUNNY	"ov5648_sunny"
+#define DEVICE_MANUFACUTRE_5648		"OmniVision"
+#define DEVICE_VERSION_IMX214		"imx214"
+#define DEVICE_MANUFACUTRE_IMX214	"Sony"
+/*hufeng 2014-10-26 add for 14005 14006 devices information*/
+#define DEVICE_VERSION_S5K5E2		"s5k5e2"
+#define DEVICE_MANUFACUTRE_S5K5E2	"Samsung"
+#endif
+
 /* Static declaration */
 static struct msm_sensor_ctrl_t *g_sctrl[MAX_CAMERAS];
 
@@ -916,6 +931,26 @@ static int32_t msm_sensor_driver_platform_probe(struct platform_device *pdev)
 	/* Fill device in power info */
 	s_ctrl->sensordata->power_info.dev = &pdev->dev;
 
+#ifdef VENDOR_EDIT
+	/*liubin 2014-10-24 add for 14037/14039/14040 devices information*/
+	if(is_project(OPPO_14037) || is_project(OPPO_14039) || is_project(OPPO_14051))
+	{
+		register_device_proc("r_camera", DEVICE_VERSION_IMX179, DEVICE_MANUFACUTRE_IMX179);
+		register_device_proc("f_camera", DEVICE_VERSION_5648_SUNNY, DEVICE_MANUFACUTRE_5648);
+	}
+	/*liubin 2014-10-25 add for 14045/14046/14047 devices information*/
+	if(is_project(OPPO_14045) || is_project(OPPO_14046) || is_project(OPPO_14047))
+	{
+		register_device_proc("r_camera", DEVICE_VERSION_IMX214, DEVICE_MANUFACUTRE_IMX214);
+		register_device_proc("f_camera", DEVICE_VERSION_5648_SUNNY, DEVICE_MANUFACUTRE_5648);
+	}
+	/*hufeng 2014-10-26 add for 14005 14006 devices information*/
+	if(is_project(OPPO_14005) || is_project(OPPO_14006))
+	{
+		register_device_proc("r_camera", DEVICE_VERSION_IMX214, DEVICE_MANUFACUTRE_IMX214);
+		register_device_proc("f_camera", DEVICE_VERSION_S5K5E2, DEVICE_MANUFACUTRE_S5K5E2);
+	}
+#endif
 	return rc;
 FREE_S_CTRL:
 	kfree(s_ctrl);

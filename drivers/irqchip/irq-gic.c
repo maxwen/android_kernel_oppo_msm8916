@@ -241,6 +241,13 @@ static int gic_suspend(void)
 }
 
 extern int msm_show_resume_irq_mask;
+#ifdef VENDOR_EDIT
+/*Fuchun.Liao@Mobile.BSP.Power 2014-11-05 add for test patch*/
+/*
+int special_200_triggered = 0;
+int special_200_triggered_times = 0; 
+*/
+#endif
 
 /*
  * gic_show_pending_irq - Shows the pending interrupts
@@ -271,6 +278,10 @@ static void gic_show_resume_irq(struct gic_chip_data *gic)
 {
 	unsigned int i;
 	u32 enabled;
+#ifdef VENDOR_EDIT
+/*Fuchun.Liao@Mobile.BSP.Power 2014-11-05 add for test patch*/
+	//unsigned int j = 0,irq = 0;
+#endif
 	unsigned long pending[32];
 	void __iomem *base = gic_data_dist_base(gic);
 
@@ -298,7 +309,32 @@ static void gic_show_resume_irq(struct gic_chip_data *gic)
 
 		pr_warning("%s: %d triggered %s\n", __func__,
 					i + gic->irq_offset, name);
+#ifdef VENDOR_EDIT
+/*Fuchun.Liao@Mobile.BSP.Power 2014-11-05 add for test patch*/
+/*
+		irq = i + gic->irq_offset;
+		j++;
+*/
+#endif
 	}
+
+#ifdef VENDOR_EDIT
+/*Fuchun.Liao@Mobile.BSP.Power 2014-11-05 add for test patch*/
+/*
+	if((1 == j)&&(200 == irq))
+	{
+		special_200_triggered = 1;
+		special_200_triggered_times++;
+	}
+	else
+	{
+		special_200_triggered = 0;
+	}
+	if(special_200_triggered_times > 12)
+		panic("to root cause irq 200!!\n"); 
+*/
+#endif
+		 
 }
 
 static void gic_resume_one(struct gic_chip_data *gic)

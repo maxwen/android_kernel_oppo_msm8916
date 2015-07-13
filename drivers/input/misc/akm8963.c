@@ -34,6 +34,7 @@
 #include <linux/of_gpio.h>
 #include <linux/sensors.h>
 #include <linux/akm8963.h>
+#include <linux/sensors_ftm.h>
 
 #define AKM_DEBUG_IF			0
 #define AKM_HAS_RESET			0
@@ -875,9 +876,7 @@ static int akm_enable_set(struct sensors_classdev *sensors_cdev,
 		if (enable) {
 			AKECS_SetMode(akm,
 				AKM_MODE_SNG_MEASURE | AKM8963_BIT_OP_16);
-			schedule_delayed_work(&akm->dwork,
-					msecs_to_jiffies(
-						akm->delay[MAG_DATA_FLAG]));
+			schedule_delayed_work(&akm->dwork,0);
 		} else {
 			cancel_delayed_work_sync(&akm->dwork);
 			AKECS_SetMode(akm, AKM_MODE_POWERDOWN);
@@ -1268,6 +1267,39 @@ static struct bin_attribute akm_compass_bin_attributes[] = {
 static char const *const device_link_name = "i2c";
 static dev_t const akm_compass_device_dev_t = MKDEV(MISC_MAJOR, 240);
 
+static ssize_t akm_test_show(struct device *dev, struct device_attribute *attr, char *buf)
+{
+	int32_t  ret = 1;
+
+	return scnprintf(buf, PAGE_SIZE, "%d\n", ret);
+}
+static ssize_t akm_dir_show(struct device *dev, struct device_attribute *attr, char *buf)
+{
+
+    return scnprintf(buf, PAGE_SIZE, "%d\n", s_akm->pdata->layout);
+}
+
+static ssize_t akm_dir_store(struct device *dev, struct device_attribute *attr, const char *buf, size_t size)
+{
+    unsigned long value = 0;
+    int ret;
+    ret = kstrtoul(buf, 10, &value);
+	s_akm->pdata->layout = value;
+    return size;
+}
+
+static struct device_attribute akm_attri_direction = __ATTR(dir,0664,akm_dir_show,akm_dir_store);
+static struct device_attribute akm_attri_test = __ATTR(test,0664,akm_test_show,NULL);
+static struct attribute *akm_attrs [] =
+{
+	&akm_attri_test.attr,      
+	&akm_attri_direction.attr,
+	NULL
+};
+static struct attribute_group akm_attri_group = {
+	.attrs = akm_attrs,
+};
+
 static int create_sysfs_interfaces(struct akm_compass_data *akm)
 {
 	int err;
@@ -1312,6 +1344,8 @@ static int create_sysfs_interfaces(struct akm_compass_data *akm)
 			akm_compass_bin_attributes);
 	if (0 > err)
 		goto exit_device_binary_attributes_create_failed;
+
+	err = sysfs_create_group(&akm->i2c->dev.kobj, &akm_attri_group);
 
 	return err;
 
@@ -1440,7 +1474,7 @@ work_func_none:
 static int akm_compass_suspend(struct device *dev)
 {
 	struct akm_compass_data *akm = dev_get_drvdata(dev);
-	int ret = 0;
+	//int ret = 0;
 
 	if (AKM_IS_MAG_DATA_ENABLED() &&
 		akm->use_poll &&
@@ -1455,9 +1489,9 @@ static int akm_compass_suspend(struct device *dev)
 		atomic_set(&akm->drdy, 0);
 	}
 
-	ret = pinctrl_select_state(akm->pinctrl, akm->pin_sleep);
+	/* ret = pinctrl_select_state(akm->pinctrl, akm->pin_sleep);
 	if (ret)
-		dev_err(dev, "Can't select pinctrl state\n");
+		dev_err(dev, "Can't select pinctrl state\n"); */
 
 	dev_dbg(&akm->i2c->dev, "suspended\n");
 
@@ -1469,9 +1503,9 @@ static int akm_compass_resume(struct device *dev)
 	struct akm_compass_data *akm = dev_get_drvdata(dev);
 	int ret = 0;
 
-	ret = pinctrl_select_state(akm->pinctrl, akm->pin_default);
+	/* ret = pinctrl_select_state(akm->pinctrl, akm->pin_default);
 	if (ret)
-		dev_err(dev, "Can't select pinctrl state\n");
+		dev_err(dev, "Can't select pinctrl state\n"); */
 
 	if (akm->state.power_on) {
 		ret = akm_compass_power_set(akm, true);
@@ -1673,7 +1707,7 @@ static int akm_compass_parse_dt(struct device *dev,
 	u32 temp_val;
 	int rc;
 
-	rc = of_property_read_u32(np, "ak,layout", &temp_val);
+	rc = of_property_read_u32(np, "akm,layout", &temp_val);
 	if (rc && (rc != -EINVAL)) {
 		dev_err(dev, "Unable to read akm,layout\n");
 		return rc;
@@ -1681,12 +1715,12 @@ static int akm_compass_parse_dt(struct device *dev,
 		pdata->layout = temp_val;
 	}
 
-	if (of_property_read_bool(np, "ak,auto-report")) {
+	if (of_property_read_bool(np, "akm,auto-report")) {
 		pdata->auto_report = 1;
 		pdata->use_int = 0;
 	} else {
 		pdata->auto_report = 0;
-		if (of_property_read_bool(dev->of_node, "ak,use-interrupt")) {
+		if (of_property_read_bool(dev->of_node, "akm,use-interrupt")) {
 			pdata->use_int = 1;
 			/* check gpio_int later, if it is invalid,
 			 * just use poll */
@@ -1698,7 +1732,7 @@ static int akm_compass_parse_dt(struct device *dev,
 	}
 
 	pdata->gpio_rstn = of_get_named_gpio_flags(dev->of_node,
-			"ak,gpio-rstn", 0, NULL);
+			"akm,gpio-rstn", 0, NULL);
 
 	return 0;
 }
@@ -1709,7 +1743,7 @@ static int akm_compass_parse_dt(struct device *dev,
 	return -EINVAL;
 }
 #endif /* !CONFIG_OF */
-
+/*
 static int akm8963_pinctrl_init(struct akm_compass_data *s_akm)
 {
 	struct i2c_client *client = s_akm->i2c;
@@ -1736,7 +1770,7 @@ static int akm8963_pinctrl_init(struct akm_compass_data *s_akm)
 
 	return 0;
 }
-
+*/
 static void akm_dev_poll(struct work_struct *work)
 {
 	struct akm_compass_data *akm;
@@ -1772,7 +1806,7 @@ static void akm_dev_poll(struct work_struct *work)
 	tmp = (int)((int16_t)(dat_buf[6]<<8)+((int16_t)dat_buf[5]));
 	tmp = tmp * akm->sense_conf[2] / 256 + tmp / 2;
 	mag_z = tmp;
-
+	printk(KERN_EMERG"%s: direction is %d\n",__func__, akm->pdata->layout);
 	switch (akm->pdata->layout) {
 	case 0:
 	case 1:
@@ -1832,7 +1866,153 @@ exit:
 		schedule_delayed_work(&akm->dwork,
 				msecs_to_jiffies(akm->delay[MAG_DATA_FLAG]));
 }
+/*--------------------------------------------------------------------------*/
+static ssize_t akm_geomag_enable_store(struct kobject *kobj, struct kobj_attribute *attr, const char *buf, size_t count)
+{
+	u32 enable;
+	int ret = -EINVAL;
+	struct akm_compass_data *mag = s_akm;
+	
+	sscanf(buf, "%x", &enable);
+	if (enable && (!mag->enable_flag)) {
+		ret = akm_compass_power_set(mag, true);
+		if (ret) {
+			dev_err(&mag->i2c->dev, "Power up failed\n");
+		}
 
+	} else if ((!enable) && mag->enable_flag) {
+
+		ret = akm_compass_power_set(mag, false);
+		if (ret)
+			dev_warn(&mag->i2c->dev, "Power off failed\n");
+	} else {
+		dev_warn(&mag->i2c->dev,
+				"ignore enable state change from %d to %d\n",
+				mag->enable_flag, enable);
+	}
+	mag->enable_flag= enable;
+	if (ret == 0)
+		printk("%s: Enable sensor SUCCESS\n",__func__);
+
+	return count;
+}
+static ssize_t akm_geomag_enable_show(struct kobject *kobj, struct kobj_attribute *attr, char *buf)
+{
+	struct akm_compass_data *mag = s_akm;
+	return snprintf(buf, PAGE_SIZE, "geomagnetic:%d\n", mag->enable_flag);
+}
+static struct kobj_attribute enable = 
+{
+	.attr = {"enable", 0664},
+	.show = akm_geomag_enable_show,
+	.store = akm_geomag_enable_store,
+};
+static ssize_t akm_geomag_raw_show(struct kobject *kobj, struct kobj_attribute *attr, char *buf)
+{
+	struct akm_compass_data *akm = s_akm;
+
+	uint8_t dat_buf[AKM_SENSOR_DATA_SIZE];/* for GET_DATA */
+	int ret;
+	int mag_x, mag_y, mag_z;
+	int tmp;
+
+	ret = AKECS_GetData_Poll(akm, dat_buf, AKM_SENSOR_DATA_SIZE);
+	if (ret < 0) {
+		dev_warn(&s_akm->i2c->dev, "Get data failed\n");
+	}
+
+	tmp = 0xFF & (dat_buf[7] + dat_buf[0]);
+	if (STATUS_ERROR(tmp)) {
+		dev_warn(&akm->i2c->dev, "Status error(0x%x). Reset...\n",
+				tmp);
+		AKECS_Reset(akm, 0);
+	}
+
+	tmp = (int)((int16_t)(dat_buf[2]<<8)+((int16_t)dat_buf[1]));
+	tmp = tmp * akm->sense_conf[0] / 256 + tmp / 2;
+	mag_x = tmp;
+
+	tmp = (int)((int16_t)(dat_buf[4]<<8)+((int16_t)dat_buf[3]));
+	tmp = tmp * akm->sense_conf[1] / 256 + tmp / 2;
+	mag_y = tmp;
+
+	tmp = (int)((int16_t)(dat_buf[6]<<8)+((int16_t)dat_buf[5]));
+	tmp = tmp * akm->sense_conf[2] / 256 + tmp / 2;
+	mag_z = tmp;
+	printk(KERN_EMERG"%s: direction is %d\n",__func__, akm->pdata->layout);
+	switch (akm->pdata->layout) {
+	case 0:
+	case 1:
+		/* Fall into the default direction */
+		break;
+	case 2:
+		tmp = mag_x;
+		mag_x = mag_y;
+		mag_y = -tmp;
+		break;
+	case 3:
+		mag_x = -mag_x;
+		mag_y = -mag_y;
+		break;
+	case 4:
+		tmp = mag_x;
+		mag_x = -mag_y;
+		mag_y = tmp;
+		break;
+	case 5:
+		mag_x = -mag_x;
+		mag_z = -mag_z;
+		break;
+	case 6:
+		tmp = mag_x;
+		mag_x = mag_y;
+		mag_y = tmp;
+		mag_z = -mag_z;
+		break;
+	case 7:
+		mag_y = -mag_y;
+		mag_z = -mag_z;
+		break;
+	case 8:
+		tmp = mag_x;
+		mag_x = -mag_y;
+		mag_y = -tmp;
+		mag_z = -mag_z;
+		break;
+	}
+
+	return snprintf(buf, PAGE_SIZE, "%d %d %d\n", mag_x, mag_y, mag_z);
+}
+static struct kobj_attribute mag_raw = 
+{
+	.attr = {"mag_raw", 0444},
+	.show = akm_geomag_raw_show,
+};
+
+
+static ssize_t akm_selftest_show(struct kobject *kobj, struct kobj_attribute *attr, char *buf)
+{
+	int32_t  ret = 1;
+
+	return snprintf(buf, PAGE_SIZE, "%d\n", ret);
+}
+static struct kobj_attribute test = 
+{
+	.attr = {"test", 0444},
+	.show = akm_selftest_show,
+};
+
+
+static const struct attribute *akm_ftm_attrs[] = 
+{
+	&enable.attr,
+	&mag_raw.attr,
+	&test.attr,
+	NULL
+};
+
+static struct dev_ftm akm_ftm;
+/*--------------------------------------------------------------------------*/
 int akm8963_compass_probe(
 		struct i2c_client *i2c,
 		const struct i2c_device_id *id)
@@ -1948,14 +2128,14 @@ int akm8963_compass_probe(
 	input_set_drvdata(s_akm->input, s_akm);
 
 	/* initialize pinctrl */
-	if (!akm8963_pinctrl_init(s_akm)) {
+/*	if (!akm8963_pinctrl_init(s_akm)) {
 		err = pinctrl_select_state(s_akm->pinctrl, s_akm->pin_default);
 		if (err) {
 			dev_err(&i2c->dev, "Can't select pinctrl state\n");
 			goto err_compass_pwr_off;
 		}
 	}
-
+*/
 	if ((s_akm->pdata->use_int) &&
 		gpio_is_valid(s_akm->pdata->gpio_int)) {
 		s_akm->use_poll = false;
@@ -2028,7 +2208,13 @@ int akm8963_compass_probe(
 	if (err)
 		dev_err(&i2c->dev,
 			"Fail to disable power after probe: %d\n", err);
-
+			
+	akm_ftm.name = "geomagnetic";
+	akm_ftm.i2c_client = s_akm->i2c;
+	akm_ftm.priv_data = s_akm;
+	akm_ftm.attrs = akm_ftm_attrs;
+	register_single_dev_ftm(&akm_ftm);
+	
 	dev_info(&i2c->dev, "successfully probed.");
 	return 0;
 

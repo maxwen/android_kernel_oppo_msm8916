@@ -248,6 +248,10 @@ struct wcd9xxx_mbhc_config {
 	bool use_vddio_meas;
 	bool enable_anc_mic_detect;
 	enum hw_jack_type hw_jack_type;
+	/*OPPO 2014-08-26 zhzhyon Add for reason*/
+	int ap_audio_enable_gpio;
+	/*OPPO 2014-08-26 zhzhyon Add end*/
+
 };
 
 struct wcd9xxx_cfilt_mode {
