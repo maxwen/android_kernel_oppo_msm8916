@@ -24,6 +24,27 @@
 
 #include "mdss_dsi.h"
 
+#ifdef VENDOR_EDIT
+/* Xinqin.Yang@PhoneSW.Multimedia, 2014/08/19  Add for 14023 project */
+#include <linux/switch.h>
+#include <mach/oppo_project.h>
+#include <mach/oppo_boot_mode.h>
+#include <mach/device_info.h>
+enum {
+	LCD_JDI=0,
+	LCD_TRULY,
+	LCD_SHARP,
+	LCD_HX8394_TRULY,
+	LCD_HX8394_TRULY_P3,
+	LCD_BYD,
+	LCD_TM_HX8379,
+	LCD_TM_HX8392B,
+	LCD_TM_NT35512S,
+	LCD_UNKNOW,
+};
+int lcd_dev=0;
+#endif /*CONFIG_VENDOR_EDIT*/
+
 #define DT_CMD_HDR 6
 
 /* NT35596 panel specific status variables */
@@ -35,6 +56,108 @@
 #define MIN_REFRESH_RATE 30
 
 DEFINE_LED_TRIGGER(bl_led_trigger);
+
+#ifdef VENDOR_EDIT
+/* Xiaori.Yuan@Mobile Phone Software Dept.Driver, 2014/08/01  Add for ESD */
+int te_check_gpio = 910;
+DEFINE_SPINLOCK(te_count_lock);
+DEFINE_SPINLOCK(te_state_lock);
+
+unsigned long flags;
+struct mdss_dsi_ctrl_pdata *gl_ctrl_pdata;
+
+static bool first_run_reset=1;
+static bool cont_splash_flag;
+static int te_count = 0;
+static int irq_state = 1;
+static int irq;
+static int te_state = 0;
+static struct switch_dev display_switch;
+static struct delayed_work techeck_work;
+bool te_reset_14045 = 0;
+static bool ESD_TE_TEST = 0;
+static int samsung_te_check_count = 2;
+u32 delta = 0;
+
+static irqreturn_t TE_irq_thread_fn(int irq, void *dev_id)
+{	   
+	static u32 prev = 0;
+	u32 cur = 0;
+	if(samsung_te_check_count < 2){
+		ktime_t time = ktime_get();
+		cur = ktime_to_us(time);
+		if (prev) {
+			delta = cur - prev;
+			pr_err("%s delta = %d\n",__func__,delta);
+		}
+		prev = cur;
+	}
+	spin_lock_irqsave(&te_count_lock, flags);   
+	te_count ++;    
+	spin_unlock_irqrestore(&te_count_lock, flags);    
+	return IRQ_HANDLED;
+}
+
+static int operate_display_switch(void)
+{
+    int ret = 0;
+    printk("%s:state=%d.\n", __func__, te_state);
+
+    spin_lock_irqsave(&te_state_lock, flags);
+    if(te_state)
+        te_state = 0;
+    else
+        te_state = 1;
+    spin_unlock_irqrestore(&te_state_lock, flags);
+
+    switch_set_state(&display_switch, te_state);
+    return ret;
+}
+
+static void techeck_work_func( struct work_struct *work )
+{
+    if(te_count < 50)
+	{
+    	pr_err("yxr: te_count<50 %s\n",__func__);
+        printk("yxr------%s: lcd resetting ! te_count = %d \n",__func__,te_count);
+        printk("irq_state=%d\n", irq_state);
+		if(is_project(OPPO_14045)||is_project(OPPO_14051)){
+			te_reset_14045 = 1;
+		}
+        operate_display_switch();
+        spin_lock_irqsave(&te_count_lock, flags);
+        te_count = 0;
+        spin_unlock_irqrestore(&te_count_lock, flags);
+        schedule_delayed_work(&techeck_work, msecs_to_jiffies(2000));
+        return ;
+    }	
+	//pr_err("yxr %s:te_count=%d\n",__func__,te_count);    
+	spin_lock_irqsave(&te_count_lock, flags);    
+	te_count = 0;    
+	spin_unlock_irqrestore(&te_count_lock, flags);    
+	schedule_delayed_work(&techeck_work, msecs_to_jiffies(2000));
+}
+
+
+static ssize_t attr_mdss_dispswitch(struct device *dev,
+                                     struct device_attribute *attr, char *buf)
+{
+    printk("ESD function test--------\n");
+	if(is_project(OPPO_14045)||is_project(OPPO_14051)){
+		te_reset_14045 = 1;
+	}
+	operate_display_switch();
+
+    return 0;
+}
+
+static struct class * mdss_lcd;
+static struct device * dev_lcd;
+static struct device_attribute mdss_lcd_attrs[] = {			
+	__ATTR(dispswitch, S_IRUGO|S_IWUSR, attr_mdss_dispswitch, NULL),	
+	__ATTR_NULL,		
+	};
+#endif /*VENDOR_EDIT*/
 
 void mdss_dsi_panel_pwm_cfg(struct mdss_dsi_ctrl_pdata *ctrl)
 {
@@ -161,7 +284,105 @@ static void mdss_dsi_panel_bklt_dcs(struct mdss_dsi_ctrl_pdata *ctrl, int level)
 	mdss_dsi_cmdlist_put(ctrl, &cmdreq);
 }
 
+
+
+#ifdef VENDOR_EDIT
+/* Xiaori.Yuan@Mobile Phone Software Dept.Driver, 2014/07/28  Add for LCD acl and hbm function */
+static bool flag_lcd_off = false;
+
+static DEFINE_MUTEX(lcd_mutex);
+
+static char set_acl[2] = {0x55, 0x0};	/* DTYPE_DCS_WRITE1 */
+static struct dsi_cmd_desc set_acl_cmd = {
+	{DTYPE_DCS_WRITE1, 1, 0, 0, 1, sizeof(set_acl)},
+	set_acl
+};
+void set_acl_mode(int level)
+{
+	struct dcs_cmd_req cmdreq;
+	if(!is_project(14005))
+		return;
+	pr_err("%s: level=%d\n", __func__, level);
+	if(level < 0 || level > 3){
+		pr_err("%s: invalid input %d! \n",__func__,level);
+		return;
+	}
+	mutex_lock(&lcd_mutex);
+	if(flag_lcd_off == true)
+    {
+        printk(KERN_INFO "lcd is off,don't allow to set acl mode !\n");
+        mutex_unlock(&lcd_mutex);
+        return;
+    }
+	set_acl[1] = (unsigned char)level;
+
+	memset(&cmdreq, 0, sizeof(cmdreq));
+	cmdreq.cmds = &set_acl_cmd;
+	cmdreq.cmds_cnt = 1;
+	cmdreq.flags = CMD_REQ_COMMIT | CMD_CLK_CTRL;
+	cmdreq.rlen = 0;
+	cmdreq.cb = NULL;
+
+	mdss_dsi_cmdlist_put(gl_ctrl_pdata, &cmdreq);
+	mutex_unlock(&lcd_mutex);
+}
+
+
+static char set_hbm[2] = {0x53, 0x20};	/* DTYPE_DCS_WRITE1 */
+static struct dsi_cmd_desc set_hbm_cmd = {
+	{DTYPE_DCS_WRITE1, 1, 0, 0, 1, sizeof(set_hbm)},
+	set_hbm
+};
+void set_hbm_mode(int level)
+{
+	struct dcs_cmd_req cmdreq;
+	if(!is_project(14005))
+		return;
+	pr_err("%s: level=%d\n", __func__, level);
+	if(level < 0 || level > 2){
+		pr_err("%s: invalid input %d! \n",__func__,level);
+		return;
+	}
+	mutex_lock(&lcd_mutex);
+	if(flag_lcd_off == true)
+    {
+        printk(KERN_INFO "lcd is off,don't allow to set acl mode !\n");
+        mutex_unlock(&lcd_mutex);
+        return;
+    }
+	switch(level)
+	{
+		case 0:
+			set_hbm[1] = 0x20;
+			break;
+		case 1:
+			set_hbm[1] = 0x60;
+			break;
+		case 2:
+			set_hbm[1] = 0xe0;
+			break;
+	}
+
+	memset(&cmdreq, 0, sizeof(cmdreq));
+	cmdreq.cmds = &set_hbm_cmd;
+	cmdreq.cmds_cnt = 1;
+	cmdreq.flags = CMD_REQ_COMMIT | CMD_CLK_CTRL;
+	cmdreq.rlen = 0;
+	cmdreq.cb = NULL;
+
+	mdss_dsi_cmdlist_put(gl_ctrl_pdata, &cmdreq);
+	mutex_unlock(&lcd_mutex);
+}
+
+#endif /*VENDOR_EDIT*/
+
+
+#ifndef VENDOR_EDIT
+/* Xiaori.Yuan@Mobile Phone Software Dept.Driver, 2014/11/01  Modify for 14005 warning info first suspend */
 static int mdss_dsi_request_gpios(struct mdss_dsi_ctrl_pdata *ctrl_pdata)
+#else /*VENDOR_EDIT*/
+int mdss_dsi_request_gpios(struct mdss_dsi_ctrl_pdata *ctrl_pdata)
+#endif /*VENDOR_EDIT*/
 {
 	int rc = 0;
 
@@ -173,13 +394,30 @@ static int mdss_dsi_request_gpios(struct mdss_dsi_ctrl_pdata *ctrl_pdata)
 				       rc);
 			goto disp_en_gpio_err;
 		}
+        pr_err("%s YXQ disp_en_gpio=0x%x\n", __func__, ctrl_pdata->disp_en_gpio);
 	}
+#ifdef VENDOR_EDIT
+/* Xinqin.Yang@PhoneSW.Multimedia, 2014/08/19  Add for -5V */
+    if (is_project(OPPO_14023)) {
+        if (gpio_is_valid(ctrl_pdata->disp_en_negative_gpio)) {
+    		rc = gpio_request(ctrl_pdata->disp_en_negative_gpio,
+    						"disp_negative_enable");
+    		if (rc) {
+    			pr_err("request disp_negative_en gpio failed, rc=%d\n",
+    				       rc);
+    			goto disp_en_gpio_err;
+    		}
+            pr_err("%s YXQ disp_en_negative_gpio=0x%x\n", __func__, ctrl_pdata->disp_en_negative_gpio);
+    	}
+    }
+#endif /*CONFIG_VENDOR_EDIT*/
 	rc = gpio_request(ctrl_pdata->rst_gpio, "disp_rst_n");
 	if (rc) {
 		pr_err("request reset gpio failed, rc=%d\n",
 			rc);
 		goto rst_gpio_err;
 	}
+    pr_err("%s YXQ rst_gpio=0x%x\n", __func__, ctrl_pdata->rst_gpio);
 	if (gpio_is_valid(ctrl_pdata->bklt_en_gpio)) {
 		rc = gpio_request(ctrl_pdata->bklt_en_gpio,
 						"bklt_enable");
@@ -240,11 +478,67 @@ int mdss_dsi_panel_reset(struct mdss_panel_data *pdata, int enable)
 	pinfo = &(ctrl_pdata->panel_data.panel_info);
 
 	if (enable) {
+#ifndef VENDOR_EDIT
+/* Xiaori.Yuan@Mobile Phone Software Dept.Driver, 2014/09/15  Modify for 14045 1.8v gpio repeat request */
 		rc = mdss_dsi_request_gpios(ctrl_pdata);
 		if (rc) {
 			pr_err("gpio request failed\n");
 			return rc;
 		}
+#else /*VENDOR_EDIT*/
+		if(!(is_project(OPPO_14045)||is_project(OPPO_14051))){
+			rc = mdss_dsi_request_gpios(ctrl_pdata);
+			if (rc) {
+				pr_err("gpio request failed\n");
+				return rc;
+			}
+		}
+
+		//yxr delete for samsung oled
+		pr_err("%s YXQ pinfo->panel_powe_on=%d\n", __func__, pinfo->panel_power_on);
+        if (is_project(OPPO_14005)) {
+			 if (!pinfo->panel_power_on){
+            	if (gpio_is_valid(ctrl_pdata->disp_en_gpio))
+               	 gpio_set_value((ctrl_pdata->disp_en_gpio), 1);
+                        
+          	 	 for (i = 0; i < pdata->panel_info.rst_seq_len; ++i) {
+            	    gpio_set_value((ctrl_pdata->rst_gpio),
+            	        pdata->panel_info.rst_seq[i]);
+            	    if (pdata->panel_info.rst_seq[++i])
+            	        usleep(pinfo->rst_seq[i] * 1000);
+          		  }
+            
+           		 if (gpio_is_valid(ctrl_pdata->bklt_en_gpio))
+              	  gpio_set_value((ctrl_pdata->bklt_en_gpio), 1);
+        	}
+        }else if(is_project(OPPO_14045)||is_project(OPPO_14051)){
+        	if (gpio_is_valid(ctrl_pdata->disp_en_gpio))
+                gpio_set_value((ctrl_pdata->disp_en_gpio), 1);
+			if( te_reset_14045 == 1 ){
+				pr_err("te_reset_14045 = 1\n");
+				for (i = 0; i < pdata->panel_info.rst_seq_len; ++i) {
+                gpio_set_value((ctrl_pdata->rst_gpio),
+                    pdata->panel_info.rst_seq[i]);
+                if (pdata->panel_info.rst_seq[++i])
+                    usleep(pinfo->rst_seq[i] * 1000);
+            	}
+			//te_reset_14045 = 0;
+			}
+		}else if(is_project(OPPO_14037)){
+		    if (gpio_is_valid(ctrl_pdata->disp_en_gpio))
+				    gpio_set_value((ctrl_pdata->disp_en_gpio), 1);
+		    if (gpio_is_valid(ctrl_pdata->bklt_en_gpio))
+				    gpio_set_value((ctrl_pdata->bklt_en_gpio), 1);
+			
+		    mdelay(1);
+		    for (i = 0; i < pdata->panel_info.rst_seq_len; ++i) {
+			    gpio_set_value((ctrl_pdata->rst_gpio),
+				    pdata->panel_info.rst_seq[i]);
+			    if (pdata->panel_info.rst_seq[++i])
+				    usleep(pinfo->rst_seq[i] * 1000);
+		    }
+		} else {
+#endif /*VENDOR_EDIT*/
 		if (!pinfo->panel_power_on) {
 			if (gpio_is_valid(ctrl_pdata->disp_en_gpio))
 				gpio_set_value((ctrl_pdata->disp_en_gpio), 1);
@@ -259,6 +553,7 @@ int mdss_dsi_panel_reset(struct mdss_panel_data *pdata, int enable)
 			if (gpio_is_valid(ctrl_pdata->bklt_en_gpio))
 				gpio_set_value((ctrl_pdata->bklt_en_gpio), 1);
 		}
+        }
 
 		if (gpio_is_valid(ctrl_pdata->mode_gpio)) {
 			if (pinfo->mode_gpio_state == MODE_GPIO_HIGH)
@@ -273,6 +568,18 @@ int mdss_dsi_panel_reset(struct mdss_panel_data *pdata, int enable)
 			pr_debug("%s: Reset panel done\n", __func__);
 		}
 	} else {
+#ifdef VENDOR_EDIT
+/* Xiaori.Yuan@Mobile Phone Software Dept.Driver, 2014/09/15  Add for 14045 LCD and TP */
+		if(is_project(OPPO_14045)||is_project(OPPO_14051)) { 
+			if( te_reset_14045 == 1 ){
+				pr_err("te_reset_14045 = 1\n");
+			if (gpio_is_valid(ctrl_pdata->disp_en_gpio))
+			    gpio_set_value((ctrl_pdata->disp_en_gpio), 0);
+			gpio_set_value((ctrl_pdata->rst_gpio), 0);
+			}
+			return 0;
+			}
+#endif /*VENDOR_EDIT*/
 		if (gpio_is_valid(ctrl_pdata->bklt_en_gpio)) {
 			gpio_set_value((ctrl_pdata->bklt_en_gpio), 0);
 			gpio_free(ctrl_pdata->bklt_en_gpio);
@@ -282,6 +589,13 @@ int mdss_dsi_panel_reset(struct mdss_panel_data *pdata, int enable)
 			gpio_free(ctrl_pdata->disp_en_gpio);
 		}
 		gpio_set_value((ctrl_pdata->rst_gpio), 0);
+#ifdef VENDOR_EDIT
+//add for IC HX8379-C pull up rst avoid more electric when sleep
+        if(is_project(OPPO_14043)){
+    		msleep(30);
+    		gpio_set_value((ctrl_pdata->rst_gpio), 1);
+		}
+#endif
 		gpio_free(ctrl_pdata->rst_gpio);
 		if (gpio_is_valid(ctrl_pdata->mode_gpio))
 			gpio_free(ctrl_pdata->mode_gpio);
@@ -374,11 +688,302 @@ static void mdss_dsi_panel_switch_mode(struct mdss_panel_data *pdata,
 	return;
 }
 
+#ifdef VENDOR_EDIT
+/* Xinqin.Yang@PhoneSW.Multimedia, 2014/09/03  Add for lm3630 */
+extern  int lm3630_bank_a_update_status(u32 bl_level);
+
+extern int set_wakeup_gesture_mode(uint8_t value);
+
+
+static char samsung_oncmd_0_0[] = {0x11, 0x00}; 
+static char samsung_oncmd_0_1[] = {0x35, 0x00}; 
+static char samsung_oncmd_0_2[] = {0xf0, 0x5a, 0x5a}; 
+static char samsung_oncmd_0_3[] = {0xfc, 0x5a, 0x5a}; 
+static char samsung_oncmd_0_4[] = {0xfd, 0xb8}; 
+static char samsung_oncmd_0_5[] = {0xb0, 0x14}; 
+static char samsung_oncmd_0_6[] = {0xd7, 0x75}; 
+static char samsung_oncmd_0_7[] = {0xb0, 0x20}; 
+static char samsung_oncmd_0_8[] = {0xd7, 0x00}; 
+static char samsung_oncmd_0_9[] = {0xfe, 0x80}; 
+static char samsung_oncmd_0_10[] = {0xfe, 0x00}; 
+static struct dsi_cmd_desc samsung_oncmd_0[] = {
+	{{DTYPE_DCS_WRITE, 1, 0, 1, 20, sizeof(samsung_oncmd_0_0)},	samsung_oncmd_0_0},
+	{{DTYPE_DCS_WRITE, 1, 0, 1, 0, sizeof(samsung_oncmd_0_1)},	samsung_oncmd_0_1},
+	{{DTYPE_GEN_LWRITE, 1, 0, 1, 0, sizeof(samsung_oncmd_0_2)},	samsung_oncmd_0_2},
+	{{DTYPE_GEN_LWRITE, 1, 0, 1, 0, sizeof(samsung_oncmd_0_3)},	samsung_oncmd_0_3},
+	{{DTYPE_DCS_WRITE1, 1, 0, 1, 0, sizeof(samsung_oncmd_0_4)},	samsung_oncmd_0_4},
+	{{DTYPE_DCS_WRITE1, 1, 0, 1, 0, sizeof(samsung_oncmd_0_5)},	samsung_oncmd_0_5},
+	{{DTYPE_DCS_WRITE1, 1, 0, 1, 0, sizeof(samsung_oncmd_0_6)},	samsung_oncmd_0_6},
+	{{DTYPE_DCS_WRITE1, 1, 0, 1, 0, sizeof(samsung_oncmd_0_7)},	samsung_oncmd_0_7},
+	{{DTYPE_DCS_WRITE1, 1, 0, 1, 0, sizeof(samsung_oncmd_0_8)},	samsung_oncmd_0_8},
+	{{DTYPE_DCS_WRITE1, 1, 0, 1, 0, sizeof(samsung_oncmd_0_9)},	samsung_oncmd_0_9},
+	{{DTYPE_DCS_WRITE1, 1, 0, 1, 0, sizeof(samsung_oncmd_0_10)},samsung_oncmd_0_10},
+};
+
+//static char samsung_oncmd_1_0[] = {0x35, 0x00}; 
+static char samsung_oncmd_1_1[] = {0x53, 0x20}; 
+static char samsung_oncmd_1_2[] = {0x29, 0x00}; 
+ char samsung_oncmd_1_3[] = {0xf2, 0x01, 0x48, 0xa0, 0x09, 0x07, 0x00}; 
+static char samsung_oncmd_1_4[] = {0xf0, 0xa5, 0xa5}; 
+static char samsung_oncmd_1_5[] = {0xfc, 0xa5, 0xa5}; 
+
+
+
+static struct dsi_cmd_desc samsung_oncmd_1[] = {
+	//{{DTYPE_DCS_WRITE1, 1, 0, 1, 0, sizeof(samsung_oncmd_1_0)},	samsung_oncmd_1_0},
+	{{DTYPE_GEN_LWRITE, 1, 0, 1, 0, sizeof(samsung_oncmd_1_3)},	samsung_oncmd_1_3},
+	{{DTYPE_DCS_WRITE1, 1, 0, 1, 0, sizeof(samsung_oncmd_1_4)},	samsung_oncmd_1_4},
+	{{DTYPE_DCS_WRITE1, 1, 0, 1, 0, sizeof(samsung_oncmd_1_5)},	samsung_oncmd_1_5},
+	{{DTYPE_DCS_WRITE1, 1, 0, 1, 0, sizeof(samsung_oncmd_1_1)},	samsung_oncmd_1_1},
+	{{DTYPE_DCS_WRITE, 1, 0, 1, 40, sizeof(samsung_oncmd_1_2)},	samsung_oncmd_1_2},
+};
+
+
+static char samsung_oncmd_0_b1_1[] = {0xb1, 0x00, 0x00, 0x42, 0xff, 0x04, 0x13, 0x2b, 0x42, 0x78, 0xb2, 0xff}; 
+static char samsung_oncmd_0_b2[] = 	 {0xb2, 0xe0, 0x0e, 0xe0, 0x0b, 0xe0, 0x06, 0x06, 0x68, 0x70, 0xff, 0xff,0xff}; 
+static char samsung_oncmd_0_f7[] = 	 {0xf7, 0x03};
+
+static struct dsi_cmd_desc samsung_oncmd_2 = {
+	{DTYPE_GEN_LWRITE, 1, 0, 1, 0, sizeof(samsung_oncmd_0_2)},	samsung_oncmd_0_2
+};
+
+static struct dsi_cmd_desc samsung_oncmd_3 = {
+	{DTYPE_GEN_LWRITE, 1, 0, 1, 0, sizeof(samsung_oncmd_1_4)},	samsung_oncmd_1_4
+};
+
+static struct dsi_cmd_desc samsung_oncmd_4 = {
+	{DTYPE_GEN_LWRITE, 1, 0, 1, 0, sizeof(samsung_oncmd_0_b1_1)}, samsung_oncmd_0_b1_1
+};
+
+static struct dsi_cmd_desc samsung_oncmd_5 = {
+	{DTYPE_GEN_LWRITE, 1, 0, 1, 0, sizeof(samsung_oncmd_0_b2)}, samsung_oncmd_0_b2
+};  //0xb2
+
+static struct dsi_cmd_desc samsung_oncmd_6 = {
+	{0x15, 1, 0, 1, 0, sizeof(samsung_oncmd_0_f7)}, samsung_oncmd_0_f7
+}; //0xf7
+
+
+
+
+
+
+
+
+static char samsung_fit_0[2] = {0xb0, 0x14}; 
+static char samsung_fit_1[2] = {0xd7, 0x6f}; 
+static char samsung_fit_2[2] = {0xfe, 0x80};
+static char samsung_fit_3[2] = {0xfe, 0x00};
+
+
+static struct dsi_cmd_desc samsung_fit[] = {
+	{{DTYPE_DCS_WRITE1, 1, 0, 1, 0, sizeof(samsung_fit_0)},	samsung_fit_0},
+	{{DTYPE_DCS_WRITE1, 1, 0, 1, 0, sizeof(samsung_fit_1)},	samsung_fit_1},
+	{{DTYPE_DCS_WRITE1, 1, 0, 1, 0, sizeof(samsung_fit_2)},	samsung_fit_2},
+	{{DTYPE_DCS_WRITE1, 1, 0, 1, 0, sizeof(samsung_fit_3)},	samsung_fit_3},
+};
+static void send_samsung_fit_cmd(struct dsi_cmd_desc * cmd , int count)
+{
+	struct dcs_cmd_req cmdreq;
+	pr_err("samsung_fit size : %d\n",count);
+	//return;
+	memset(&cmdreq, 0, sizeof(cmdreq));
+	cmdreq.cmds = cmd;
+	cmdreq.cmds_cnt = count;
+	cmdreq.flags = CMD_REQ_COMMIT | CMD_REQ_LP_MODE;//CMD_REQ_LP_MODE
+	cmdreq.rlen = 0;
+	cmdreq.cb = NULL;
+	mdss_dsi_cmdlist_put(gl_ctrl_pdata, &cmdreq);
+}
+
+int samsung_lut_1[90][2] = {
+	{33333, 0x32},
+	{22999, 0x33},
+	{22861, 0x34},
+	{22726, 0x35},
+	{22609, 0x36},
+	{22490, 0x37},
+	{22363, 0x38},
+	{22237, 0x39},
+	{22121, 0x3A},
+	{22005, 0x3B},
+	{21880, 0x3C},
+	{21761, 0x3D},
+	{21649, 0x3E},
+	{21535, 0x3F},
+	{21461, 0x40},
+	{21385, 0x41},
+	{21275, 0x42},
+	{21170, 0x43},
+	{21056, 0x44},
+	{20943, 0x45},
+	{20834, 0x46},
+	{20723, 0x47},
+	{20614, 0x48},
+	{20506, 0x49},
+	{20406, 0x4A},
+	{20311, 0x4B},
+	{20206, 0x4C},
+	{20099, 0x4D},
+	{20003, 0x4E},
+	{19903, 0x4F},
+	{19808, 0x50},
+	{19717, 0x51},
+	{19621, 0x52},
+	{19526, 0x53},
+	{19428, 0x54},
+	{19331, 0x55},
+	{19244, 0x56},
+	{19153, 0x57},
+	{19056, 0x58},
+	{18963, 0x59},
+	{18879, 0x5A},
+	{18794, 0x5B},
+	{18702, 0x5C},
+	{18610, 0x5D},
+	{18522, 0x5E},
+	{18438, 0x5F},
+	{18359, 0x60},
+	{18277, 0x61},
+	{18196, 0x62},
+	{18116, 0x63},
+	{18030, 0x64},
+	{17943, 0x65},
+	{17862, 0x66},
+	{17783, 0x67},
+	{17704, 0x68},
+	{17625, 0x69},
+	{17545, 0x6A},
+	{17464, 0x6B},
+	{17384, 0x6C},
+	{17306, 0x6D},
+	{17231, 0x6E},
+	{17158, 0x6F},
+	{17089, 0x70},
+	{17016, 0x71},
+	{16944, 0x72},
+	{16874, 0x73},
+	{16797, 0x74},
+	{16717, 0x75},
+	{16646, 0x76},
+	{16578, 0x77},
+	{16505, 0x78},
+	{16433, 0x79},
+	{16365, 0x7A},
+	{16299, 0x7B},
+	{16228, 0x7C},
+	{16152, 0x7D},
+	{16089, 0x7E},
+	{16027, 0x7F},
+	{15973, 0x80},
+	{15921, 0x81},
+	{15855, 0x82},
+	{15787, 0x83},
+	{15720, 0x84},
+	{15657, 0x85},
+	{15594, 0x86},
+	{15532, 0x87},
+	{15466, 0x88},
+	{15401, 0x89},
+	{15342, 0x8A},
+	{15283, 0x8B},
+};
+int samsung_lut_2[67][2] = {
+	{19655, -34}, 
+	{19551, -33},
+	{19449, -32}, 
+	{19354, -31}, 
+	{19264, -30}, 
+	{19165, -29}, 
+	{19063, -28}, 
+	{18972, -27}, 
+	{18877, -26}, 
+	{18787, -25}, 
+	{18701, -24}, 
+	{18610, -23}, 
+	{18520, -22}, 
+	{18427, -21}, 
+	{18335, -20}, 
+	{18253, -19}, 
+	{18167, -18}, 
+	{18074, -17}, 
+	{17986, -16}, 
+	{17906, -15}, 
+	{17826, -14}, 
+	{17739, -13}, 
+	{17651, -12}, 
+	{17567, -11}, 
+	{17488, -10}, 
+	{17413, -9 },
+	{17335, -8 },
+	{17258, -7 },
+	{17183, -6 },
+	{17101, -5 },
+	{17019, -4 },
+	{16942, -3 },
+	{16867, -2 },
+	{16819, 0  },
+	{16519, 2  },
+	{16488, 3  },
+	{16414, 4  },
+	{16343, 5  },
+	{16274, 6  },
+	{16208, 7  },
+	{16140, 8  },
+	{16071, 9  },
+	{16005, 10 },
+	{15932, 11 },
+	{15856, 12 },
+	{15789, 13 },
+	{15724, 14 },
+	{15655, 15 },
+	{15586, 16 },
+	{15522, 17 },
+	{15460, 18 },
+	{15392, 19 },
+	{15320, 20 },
+	{15260, 21 },
+	{15201, 22 },
+	{15150, 23 },
+	{15100, 24 },
+	{15038, 25 },
+	{14973, 26 },
+	{14910, 27 },
+	{14850, 28 },
+	{14791, 29 },
+	{14731, 30 },
+	{14669, 31 },
+	{14607, 32 },
+	{14552, 33 },
+	{14496, 34 },
+};
+
+static int samsung_gamma_offset[132] = {
+	0,-7,0,-7,0,-9,3,	3,4,1,	0,	0,	0,	2,	0,	2,	2,	4,	 0,  0, -2, -1, 0,	2,	0,	1,	2,	0,	0,	0,	0,	0,	0,
+	0,-7,0,-6,0,-10,1,0,2,0,0,	0,	2,	0,	0,	0,	2,	4,	-2, -2, -2, -2, 1,	4,	-10,	-3, 3,	0,	0,	0,	0,	0,	0,
+	0,-9,0,-7,0,-11,2,1,3,0,0,	0,	1,	0,	0,	1,	1,	4,	-4, -2, -1, -5, 0,	5,	0,	12, 9,	0,	0,	0,	0,	0,	0,
+	0,-13,0,-10,0,-14,1,1,1,-1, 1,	1,	0,	1,	1,	-2, 3,	6,	-4,  0, 1,	-1, 9,	2,	0,	1,	2,	0,	0,	0,	0,	0,	0,
+};
+
+static char samsung_c9_for_lowbrightness[133];
+static char samsung_otp_c9[133];
+static struct dsi_cmd_desc samsung_oncmd_c9 = {
+	{DTYPE_GEN_LWRITE, 1, 0, 1, 0, sizeof(samsung_c9_for_lowbrightness)}, samsung_c9_for_lowbrightness
+};
+struct dsi_cmd_desc samsung_cmd_otp_c9 = {
+	{DTYPE_GEN_LWRITE, 1, 0, 1, 0, sizeof(samsung_otp_c9)}, samsung_otp_c9
+};
+
+static bool flag_first_set_bl = true;
+#endif
 static void mdss_dsi_panel_bl_ctrl(struct mdss_panel_data *pdata,
 							u32 bl_level)
 {
 	struct mdss_dsi_ctrl_pdata *ctrl_pdata = NULL;
-
+	int i;
+	static int pre_bl = 1;
+#ifndef VENDOR_EDIT
+/* Xinqin.Yang@PhoneSW.Multimedia, 2014/09/03  Modify for backlight */
 	if (pdata == NULL) {
 		pr_err("%s: Invalid input data\n", __func__);
 		return;
@@ -421,13 +1026,122 @@ static void mdss_dsi_panel_bl_ctrl(struct mdss_panel_data *pdata,
 			__func__);
 		break;
 	}
+#else /*VENDOR_EDIT*/
+	if (is_project(OPPO_14023) || is_project(OPPO_14045) || is_project(OPPO_14051)) {
+        lm3630_bank_a_update_status(bl_level);
+	} else {
+#ifdef VENDOR_EDIT
+/* Xiaori.Yuan@Mobile Phone Software Dept.Driver, 2014/11/16  Add for decrease brightness of 14005 */
+		if(is_project(OPPO_14005)){
+			bl_level = (bl_level * 64 + 35)/70;
+		}
+#endif /*VENDOR_EDIT*/
+        if (pdata == NULL) {
+            pr_err("%s: Invalid input data\n", __func__);
+            return;
+        }
+        
+        ctrl_pdata = container_of(pdata, struct mdss_dsi_ctrl_pdata,
+                    panel_data);
+        
+        /*
+         * Some backlight controllers specify a minimum duty cycle
+         * for the backlight brightness. If the brightness is less
+         * than it, the controller can malfunction.
+         */
+        
+        if ((bl_level < pdata->panel_info.bl_min) && (bl_level != 0))
+            bl_level = pdata->panel_info.bl_min;
+        
+        switch (ctrl_pdata->bklt_ctrl) {
+        case BL_WLED:
+            led_trigger_event(bl_led_trigger, bl_level);
+            break;
+        case BL_PWM:
+            mdss_dsi_panel_bklt_pwm(ctrl_pdata, bl_level);
+            break;
+        case BL_DCS_CMD:
+			if(is_project(OPPO_14005) && MSM_BOOT_MODE__RECOVERY != get_boot_mode()){
+				if(flag_first_set_bl){
+					send_samsung_fit_cmd(&samsung_oncmd_2,1); //f0 5a 5a
+					mdss_dsi_panel_cmd_read(gl_ctrl_pdata,0xc9,0x00,NULL,&samsung_otp_c9[1],132);      //read c9
+
+					samsung_otp_c9[0]=0xc9;
+					/*for( i = 0; i < 133; i++){
+						pr_err("%d\n",samsung_otp_c9[i]);
+					}*/
+					
+					for( i = 0; i < 132; i++ ){
+						//if( i < 33 )
+						//	samsung_c9_for_lowbrightness[i+1] = samsung_otp_c9[i+1];
+						//else{
+							if(((abs(samsung_otp_c9[i+1])) - abs(samsung_gamma_offset[i]))>=0){
+								samsung_c9_for_lowbrightness[i+1] = samsung_otp_c9[i+1] + samsung_gamma_offset[i];
+							}else{
+								samsung_c9_for_lowbrightness[i] -= 1;
+								samsung_c9_for_lowbrightness[i+1] = 256 + samsung_otp_c9[i+1] + samsung_gamma_offset[i];
+							}
+						//}
+					}
+					samsung_c9_for_lowbrightness[0]=0xc9;
+	
+					/*pr_err("--------------------------22\n");
+					
+					for( i = 0; i < 133; i++){
+						pr_err("%d\n",samsung_c9_for_lowbrightness[i]);
+					}*/
+					send_samsung_fit_cmd(&samsung_oncmd_4,1); // 0xb1, 0x00, 0x00, 0x42, 0xff, 0x04, 0x13, 0x2b, 0x42, 0x78, 0xb2, 0xff
+					send_samsung_fit_cmd(&samsung_oncmd_5,1); //0xb2
+					send_samsung_fit_cmd(&samsung_oncmd_6,1);  //0xf7
+					send_samsung_fit_cmd(&samsung_oncmd_c9,1); //send c9
+					send_samsung_fit_cmd(&samsung_oncmd_3,1); //f0 a5 a5
+					
+					flag_first_set_bl = false;	
+				}
+
+				if(pre_bl == 0){
+					send_samsung_fit_cmd(&samsung_oncmd_2,1); //f0 5a 5a
+					//mdss_dsi_panel_cmd_read(gl_ctrl_pdata,0xc9,0x00,NULL,read_samsung_c9,132);      //read c9
+					send_samsung_fit_cmd(&samsung_oncmd_4,1); // 0xb1, 0x00, 0x00, 0x42, 0xff, 0x04, 0x13, 0x2b, 0x42, 0x78, 0xb2, 0xff
+					send_samsung_fit_cmd(&samsung_oncmd_5,1); //0xb2
+					send_samsung_fit_cmd(&samsung_oncmd_6,1);  //0xf7
+					send_samsung_fit_cmd(&samsung_oncmd_c9,1); //send c9
+					send_samsung_fit_cmd(&samsung_oncmd_3,1); //f0 a5 a5
+				}
+				pre_bl = bl_level;
+			}
+			
+            mdss_dsi_panel_bklt_dcs(ctrl_pdata, bl_level);
+            if (mdss_dsi_is_master_ctrl(ctrl_pdata)) {
+                struct mdss_dsi_ctrl_pdata *sctrl =
+                    mdss_dsi_get_slave_ctrl();
+                if (!sctrl) {
+                    pr_err("%s: Invalid slave ctrl data\n",
+                        __func__);
+                    return;
+                }
+                mdss_dsi_panel_bklt_dcs(sctrl, bl_level);
+            }
+            break;
+        default:
+            pr_err("%s: Unknown bl_ctrl configuration\n",
+                __func__);
+            break;
+        }
+
+	}
+#endif /*VENDOR_EDIT*/
 }
 
 static int mdss_dsi_panel_on(struct mdss_panel_data *pdata)
 {
 	struct mipi_panel_info *mipi;
 	struct mdss_dsi_ctrl_pdata *ctrl = NULL;
-
+	int i;
+	if( (is_project(OPPO_14045)||is_project(OPPO_14051)) && te_reset_14045 ==0){
+		set_wakeup_gesture_mode(0x08);
+		mdelay(20);
+	}
 	if (pdata == NULL) {
 		pr_err("%s: Invalid input data\n", __func__);
 		return -EINVAL;
@@ -439,9 +1153,73 @@ static int mdss_dsi_panel_on(struct mdss_panel_data *pdata)
 
 	pr_debug("%s: ctrl=%p ndx=%d\n", __func__, ctrl, ctrl->ndx);
 
+#ifndef VENDOR_EDIT
+/* Xiaori.Yuan@Mobile Phone Software Dept.Driver, 2014/11/11  Modify for 14005 stripe */
 	if (ctrl->on_cmds.cmd_cnt)
 		mdss_dsi_panel_cmds_send(ctrl, &ctrl->on_cmds);
+#else /*VENDOR_EDIT*/
+	if(!is_project(OPPO_14005)){
+		if (ctrl->on_cmds.cmd_cnt)
+		mdss_dsi_panel_cmds_send(ctrl, &ctrl->on_cmds);
+	}
+#endif /*VENDOR_EDIT*/
+		//send_samsung_fit_cmd(samsung_oncmd_0,sizeof(samsung_oncmd_0)/sizeof(struct dsi_cmd_desc));
+	//send_samsung_fit_cmd(samsung_oncmd_1,sizeof(samsung_oncmd_1)/sizeof(struct dsi_cmd_desc));
+#ifdef VENDOR_EDIT
+/* Xiaori.Yuan@Mobile Phone Software Dept.Driver, 2014/08/02  Add for ESD */
+	if(ESD_TE_TEST){
+		if(first_run_reset==1 && !cont_splash_flag){
+			first_run_reset=0;
+		}
+		else{
+			spin_lock_irqsave(&te_count_lock, flags);    
+			te_count = 0;    
+			spin_unlock_irqrestore(&te_count_lock, flags);    
+			irq_state++;	
+			enable_irq(irq);
+			schedule_delayed_work(&techeck_work, msecs_to_jiffies(3000));
+		}
+	}
+	
+	if(is_project(OPPO_14005)){
+		samsung_te_check_count = 0;
+		send_samsung_fit_cmd(samsung_oncmd_0,sizeof(samsung_oncmd_0)/sizeof(struct dsi_cmd_desc));
+		mdelay(40);
+		pr_err("%s delta = %d\n",__func__,delta);
+		for(i=0;i<90;i++){
+			if(delta > samsung_lut_1[i][0]){
+				break;
+			}
+		}
+		i--;
+		pr_err("i=%d\n",i);
+		samsung_fit_1[1] = samsung_lut_1[i][1];
+		pr_err("%s delta = %d samsung_fit_1[1] = %x\n",__func__,delta,samsung_fit_1[1]);
+		send_samsung_fit_cmd( samsung_fit,sizeof(samsung_fit)/sizeof(struct dsi_cmd_desc));
+		
+		
+		mdelay(60);
+		for(i=0;i<67;i++){
+			if(delta > samsung_lut_2[i][0]){
+				break;
+			}
+		}
+		i--;
+		pr_err("i=%d\n",i);
+		samsung_fit_1[1] +=	samsung_lut_2[i][1];
+		send_samsung_fit_cmd( samsung_fit,sizeof(samsung_fit)/sizeof(struct dsi_cmd_desc));
+		pr_err("samsung_fit_1[1]=%x\n",samsung_fit_1[1]);
+		samsung_te_check_count = 2;
+		send_samsung_fit_cmd(samsung_oncmd_1,sizeof(samsung_oncmd_1)/sizeof(struct dsi_cmd_desc));
+	}
+#endif /*VENDOR_EDIT*/
 
+#ifdef VENDOR_EDIT
+/* Xiaori.Yuan@Mobile Phone Software Dept.Driver, 2014/07/28  Add for lcd acl and hbm mode */
+	mutex_lock(&lcd_mutex);
+	flag_lcd_off = false;
+	mutex_unlock(&lcd_mutex);
+#endif /*VENDOR_EDIT*/
 	pr_debug("%s:-\n", __func__);
 	return 0;
 }
@@ -465,7 +1243,21 @@ static int mdss_dsi_panel_off(struct mdss_panel_data *pdata)
 
 	if (ctrl->off_cmds.cmd_cnt)
 		mdss_dsi_panel_cmds_send(ctrl, &ctrl->off_cmds);
-
+#ifdef VENDOR_EDIT
+/* Xiaori.Yuan@Mobile Phone Software Dept.Driver, 2014/08/02  Add for ESD */
+	if(ESD_TE_TEST){
+		cancel_delayed_work_sync(&techeck_work);	 
+		 	mdelay(6);    
+		 	irq_state--;  
+		 	disable_irq(irq);
+	}
+#endif /*VENDOR_EDIT*/
+#ifdef VENDOR_EDIT
+/* Xiaori.Yuan@Mobile Phone Software Dept.Driver, 2014/07/28  Add for lcd acl and hbm mode */
+	mutex_lock(&lcd_mutex);
+	flag_lcd_off = true;
+	mutex_unlock(&lcd_mutex);
+#endif /*VENDOR_EDIT*/
 	pr_debug("%s:-\n", __func__);
 	return 0;
 }
@@ -1105,6 +1897,11 @@ static int mdss_panel_parse_dt(struct device_node *np,
 	rc = of_property_read_u32(np,
 		"qcom,mdss-dsi-border-color", &tmp);
 	pinfo->lcdc.border_clr = (!rc ? tmp : 0);
+//#ifndef VENDOR_EDIT
+/* Xiaori.Yuan@Mobile Phone Software Dept.Driver, 2014/07/21  Add for LCD rotate 180 degree */
+	pinfo->is_panel_inverted = of_property_read_bool(np,		
+		"qcom,mdss-dsi-panel-inverted");
+//#endif /*VENDOR_EDIT*/
 	data = of_get_property(np, "qcom,mdss-dsi-panel-orientation", NULL);
 	if (data) {
 		pr_debug("panel orientation is %s\n", data);
@@ -1256,6 +2053,17 @@ static int mdss_panel_parse_dt(struct device_node *np,
 
 	rc = of_property_read_u32(np, "qcom,mdss-dsi-panel-framerate", &tmp);
 	pinfo->mipi.frame_rate = (!rc ? tmp : 60);
+#ifdef VENDOR_EDIT
+/* Xiaori.Yuan@Mobile Phone Software Dept.Driver, 2014/09/13  Add for cmcc */
+/*
+#ifdef OPPO_CMCC_TEST
+	if(is_project(14005)){
+		pr_err("14005 kernel cmcc set framerate to 45\n");
+		pinfo->mipi.frame_rate = 45;
+	}
+#endif
+*/
+#endif /*VENDOR_EDIT*/
 	rc = of_property_read_u32(np, "qcom,mdss-dsi-panel-clockrate", &tmp);
 	pinfo->clk_rate = (!rc ? tmp : 0);
 	data = of_get_property(np, "qcom,mdss-dsi-panel-timings", &len);
@@ -1310,7 +2118,16 @@ static int mdss_panel_parse_dt(struct device_node *np,
 			ctrl_pdata->status_mode = ESD_BTA;
 		} else if (!strcmp(data, "reg_read")) {
 			ctrl_pdata->status_mode = ESD_REG;
-			ctrl_pdata->status_cmds_rlen = 0;
+#ifdef VENDOR_EDIT
+//guoling@MM.lcddriver add for ESD check to read reg for tima panel 2014-09-10
+            if(lcd_dev == LCD_TM_NT35512S){
+                ctrl_pdata->status_cmds_rlen = 0;
+            }else{
+			    ctrl_pdata->status_cmds_rlen = 8;
+			}
+#else
+            ctrl_pdata->status_cmds_rlen = 0;
+#endif
 			ctrl_pdata->check_read_status =
 						mdss_dsi_gen_read_status;
 		} else if (!strcmp(data, "reg_read_nt35596")) {
@@ -1344,12 +2161,20 @@ int mdss_dsi_panel_init(struct device_node *node,
 	int rc = 0;
 	static const char *panel_name;
 	struct mdss_panel_info *pinfo;
+#ifdef VENDOR_EDIT
+/* Xiaori.Yuan@Mobile Phone Software Dept.Driver, 2014/09/23  Add for registe panel info */
+	static const char *panel_manufacture;
+    static const char *panel_version;
+#endif /*VENDOR_EDIT*/
 
 	if (!node || !ctrl_pdata) {
 		pr_err("%s: Invalid arguments\n", __func__);
 		return -ENODEV;
 	}
-
+#ifdef VENDOR_EDIT
+/* Xiaori.Yuan@Mobile Phone Software Dept.Driver, 2014/07/28  Add for lcd acl and hbm mode */
+	gl_ctrl_pdata = ctrl_pdata;
+#endif /*VENDOR_EDIT*/
 	pinfo = &ctrl_pdata->panel_data.panel_info;
 
 	pr_debug("%s:%d\n", __func__, __LINE__);
@@ -1362,6 +2187,40 @@ int mdss_dsi_panel_init(struct device_node *node,
 		pr_info("%s: Panel Name = %s\n", __func__, panel_name);
 		strlcpy(&pinfo->panel_name[0], panel_name, MDSS_MAX_PANEL_LEN);
 	}
+	
+#ifdef VENDOR_EDIT
+/* Xiaori.Yuan@Mobile Phone Software Dept.Driver, 2014/09/23  Add for registe panel info */
+	panel_manufacture = of_get_property(node, "qcom,mdss-dsi-panel-manufacture", NULL);
+	if (!panel_manufacture)
+		pr_info("%s:%d, panel manufacture not specified\n", __func__, __LINE__);
+	else
+		pr_info("%s: Panel Manufacture = %s\n", __func__, panel_manufacture);
+	panel_version = of_get_property(node, "qcom,mdss-dsi-panel-version", NULL);
+	if (!panel_version)
+		pr_info("%s:%d, panel version not specified\n", __func__, __LINE__);
+	else
+		pr_info("%s: Panel Version = %s\n", __func__, panel_version);
+	register_device_proc("lcd", (char *)panel_version, (char *)panel_manufacture);
+#endif /*VENDOR_EDIT*/
+
+#ifdef VENDOR_EDIT
+//guoling@MM.lcddriver add for lcd device info
+    if(!strcmp(panel_name,"oppo14043tm fwvga video mode dsi panel")){
+		lcd_dev = LCD_TM_HX8379;
+	}else if(!strcmp(panel_name,"oppo14043tm nt35512s fwvga video mode dsi panel")){
+		lcd_dev = LCD_TM_NT35512S;
+	}else if(!strcmp(panel_name,"oppo14043truly fwvga video mode dsi panel")){
+	    lcd_dev = LCD_TRULY;
+	}else if(!strcmp(panel_name,"oppo14043byd fwvga video mode dsi panel")){
+	    lcd_dev = LCD_BYD;
+	}else if(!strcmp(panel_name,"oppo14037truly hx8394a 720p video mode dsi panel")){		
+		lcd_dev = LCD_HX8394_TRULY;
+	}else if(!strcmp(panel_name,"oppo14037truly hx8394a p3 720p video mode dsi panel")){ 	
+		lcd_dev = LCD_HX8394_TRULY_P3;
+	}else if(!strcmp(panel_name,"oppo14037tianma 720p video mode dsi panel")){
+	    lcd_dev = LCD_TM_HX8392B;
+	}
+#endif  
 	rc = mdss_panel_parse_dt(node, ctrl_pdata);
 	if (rc) {
 		pr_err("%s:%d panel dt parse failed\n", __func__, __LINE__);
@@ -1372,7 +2231,63 @@ int mdss_dsi_panel_init(struct device_node *node,
 		pinfo->cont_splash_enabled = false;
 	pr_info("%s: Continuous splash %s", __func__,
 		pinfo->cont_splash_enabled ? "enabled" : "disabled");
-
+/* OPPO 2013-12-09 yxq Add begin for disable continous display for ftm mode */
+#ifdef VENDOR_EDIT
+	if(!is_project(OPPO_14005) && !is_project(OPPO_14045) && !is_project(OPPO_14051)){
+	    if ((MSM_BOOT_MODE__FACTORY == get_boot_mode()) ||
+			(MSM_BOOT_MODE__MOS == get_boot_mode())){
+	        pinfo->cont_splash_enabled = false;
+	    }
+	}
+#endif
+#ifdef VENDOR_EDIT
+/* Xiaori.Yuan@Mobile Phone Software Dept.Driver, 2014/08/01  Add for ESD */
+		if(is_project(OPPO_14045) || is_project(OPPO_14005)){
+			te_check_gpio = 910;
+			ESD_TE_TEST = 1;
+		}
+		if(is_project(OPPO_14051)){
+		    te_check_gpio = 914;
+			ESD_TE_TEST = 1;
+		}
+		if(MSM_BOOT_MODE__FACTORY == get_boot_mode()){
+			ESD_TE_TEST = 0;
+			if(is_project(OPPO_14045)){
+				te_reset_14045  = 1;
+			}
+		}
+		if(ESD_TE_TEST){
+			pr_err("te_check_gpio = %d \n",te_check_gpio);
+		
+			 gpio_request(te_check_gpio,"te_check");
+			 gpio_direction_input(te_check_gpio);
+			irq = gpio_to_irq(te_check_gpio); 
+			pr_err("te_check_gpio_irq = %d \n",irq);
+			rc = request_threaded_irq(irq, TE_irq_thread_fn, NULL,
+				IRQF_TRIGGER_RISING, "LCD_TE",NULL);	
+			if (rc < 0) {		
+				pr_err("Unable to register IRQ handler\n"); 	
+				//return -ENODEV; 
+				}	
+			INIT_DELAYED_WORK(&techeck_work, techeck_work_func );	
+			schedule_delayed_work(&techeck_work, msecs_to_jiffies(20000));
+			
+			display_switch.name = "dispswitch";
+		
+			rc = switch_dev_register(&display_switch);
+			if (rc)
+			{
+				pr_err("Unable to register display switch device\n");
+				//return rc;
+			}
+		
+			/*dir: /sys/class/mdss_lcd/lcd_control*/	
+			mdss_lcd = class_create(THIS_MODULE,"mdss_lcd");		
+			mdss_lcd->dev_attrs = mdss_lcd_attrs;				
+			device_create(mdss_lcd,dev_lcd,0,NULL,"lcd_control");
+			cont_splash_flag = pinfo->cont_splash_enabled;
+		}
+#endif /*VENDOR_EDIT*/
 	pinfo->dynamic_switch_pending = false;
 	pinfo->is_lpm_mode = false;
 

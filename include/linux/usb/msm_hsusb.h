@@ -103,6 +103,9 @@ enum msm_usb_phy_type {
 };
 
 #define IDEV_CHG_MAX	1500
+#ifdef VENDOR_EDIT	//Fuchun.Liao@Mobile.BSP.CHG 2014-09-19 add for set 2A current in 14037
+#define IDEV_CHG_MAX_2000MA		2000
+#endif
 #define IDEV_CHG_MIN	500
 #define IUNIT		100
 

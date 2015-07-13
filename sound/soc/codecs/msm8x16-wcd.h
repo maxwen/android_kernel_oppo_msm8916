@@ -157,6 +157,25 @@ struct msm8916_asoc_mach_data {
 	struct mutex cdc_mclk_mutex;
 	struct delayed_work disable_mclk_work;
 	struct afe_digital_clk_cfg digital_cdc_clk;
+#ifdef VENDOR_EDIT
+	/*OPPO 2014-10-16 zhzhyon Add for quat and sec i2s patch*/
+	void __iomem *vaddr_gpio_mux_spkr_ctl;
+	void __iomem *vaddr_gpio_mux_mic_ctl;
+	/*OPPO 2014-10-16 zhzhyon Add end*/
+	/*OPPO 2014-07-24 zhzhyon Add for tfa9890*/
+	int audio_vdd_en_gpio;
+	int spk_rec_sw;
+	int tfa9890_rst;
+	/*OPPO 2014-07-24 zhzhyon Add end*/
+	/*xiang.fei@Multimedia, 2014/09/10, Add for yda145*/
+    int spk_pa_en;
+	/*xiang.fei@Multimedia, 2014/09/10, Add end*/
+    /*xiang.fei@Multimedia, 2014/09/19, Add for compatible audio*/
+	int pcb_ver_flag0; 
+	int pcb_ver_flag1;
+	int pcb_ver_flag2;
+	/*xiang.fei@Multimedia, 2014/09/19, Add end*/
+#endif
 };
 
 struct msm8x16_wcd_pdata {
@@ -203,6 +222,9 @@ struct on_demand_supply {
 struct msm8x16_wcd_priv {
 	struct snd_soc_codec *codec;
 	u16 pmic_rev;
+#ifdef VENDOR_EDIT //Jianfeng.Qiu@Multimedia, 2014/10/28, Add for boost voltage
+	u32 boost_voltage;
+#endif /* VENDOR_EDIT */
 	u32 adc_count;
 	u32 rx_bias_count;
 	s32 dmic_1_2_clk_cnt;

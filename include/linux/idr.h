@@ -72,7 +72,9 @@ struct idr {
 /*
  * This is what we export.
  */
-
+#ifdef VENDOR_EDIT
+int oppo_idr_get_new(struct idr *idp, void *ptr, int *id);
+#endif 
 void *idr_find_slowpath(struct idr *idp, int id);
 void idr_preload(gfp_t gfp_mask);
 int idr_alloc(struct idr *idp, void *ptr, int start, int end, gfp_t gfp_mask);

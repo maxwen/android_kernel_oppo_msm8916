@@ -47,10 +47,15 @@
 #define CCI_I2C_MAX_READ 8192
 #define CCI_I2C_MAX_WRITE 8192
 
+
 static struct v4l2_subdev *g_cci_subdev;
 
 static struct msm_cam_clk_info cci_clk_info[CCI_NUM_CLK_MAX];
 
+#ifdef VENDOR_EDIT
+/*hufeng 2014-11-05 add to aviod ref_count chaos if cci_init and cci_release concurrency happened*/
+static struct mutex ref_count_lock;
+#endif
 static void msm_cci_set_clk_param(struct cci_device *cci_dev,
 	struct msm_camera_cci_ctrl *c_ctrl)
 {
@@ -490,7 +495,13 @@ static int32_t msm_cci_i2c_read_bytes(struct v4l2_subdev *sd,
 		pr_err("%s:%d Invalid I2C master addr\n", __func__, __LINE__);
 		return -EINVAL;
 	}
-
+#ifdef VENDOR_EDIT
+/*hufeng 2014-11-05 add to avoid cci read or write if cci_dev is already released*/
+       if (cci_dev->cci_state == CCI_STATE_DISABLED){
+	    pr_err("%s:%d cci state is DISABLED!\n", __func__, __LINE__);
+             return -EINVAL;
+       }
+#endif
 	master = c_ctrl->cci_info->cci_i2c_master;
 	read_cfg = &c_ctrl->cfg.cci_i2c_read_cfg;
 	if ((!read_cfg->num_byte) || (read_cfg->num_byte > CCI_I2C_MAX_READ)) {
@@ -536,6 +547,14 @@ static int32_t msm_cci_i2c_write(struct v4l2_subdev *sd,
 		pr_err("%s:%d Invalid I2C master addr\n", __func__, __LINE__);
 		return -EINVAL;
 	}
+#ifdef VENDOR_EDIT
+/*hufeng 2014-11-05 add to avoid cci read or write if cci_dev is already released*/
+       if (cci_dev->cci_state == CCI_STATE_DISABLED){
+	    pr_err("%s:%d cci state is DISABLED!\n", __func__, __LINE__);
+             return -EINVAL;
+       }
+#endif
+
 	master = c_ctrl->cci_info->cci_i2c_master;
 	CDBG("%s master %d, queue %d\n", __func__, master, queue);
 	CDBG("%s set param sid 0x%x retries %d id_map %d\n", __func__,
@@ -836,26 +855,60 @@ static int32_t msm_cci_release(struct v4l2_subdev *sd)
 static int32_t msm_cci_config(struct v4l2_subdev *sd,
 	struct msm_camera_cci_ctrl *cci_ctrl)
 {
-	int32_t rc = 0;
+	int32_t rc = 0,retry=3;
 	CDBG("%s line %d cmd %d\n", __func__, __LINE__,
 		cci_ctrl->cmd);
-	switch (cci_ctrl->cmd) {
-	case MSM_CCI_INIT:
-		rc = msm_cci_init(sd, cci_ctrl);
-		break;
-	case MSM_CCI_RELEASE:
-		rc = msm_cci_release(sd);
-		break;
-	case MSM_CCI_I2C_READ:
-		rc = msm_cci_i2c_read_bytes(sd, cci_ctrl);
-		break;
-	case MSM_CCI_I2C_WRITE:
-		rc = msm_cci_i2c_write(sd, cci_ctrl);
-		break;
-	case MSM_CCI_GPIO_WRITE:
-		break;
-	default:
-		rc = -ENOIOCTLCMD;
+	while(retry--){
+		switch (cci_ctrl->cmd) {
+			case MSM_CCI_INIT:
+#ifdef VENDOR_EDIT
+/*hufeng 2014-11-05 add to aviod ref_count chaos if cci_init and cci_release concurrency happened*/
+				mutex_lock(&ref_count_lock);
+				rc = msm_cci_init(sd, cci_ctrl);
+				mutex_unlock(&ref_count_lock);
+#else
+				rc = msm_cci_init(sd, cci_ctrl);
+#endif
+				break;
+			case MSM_CCI_RELEASE:
+#ifdef VENDOR_EDIT
+/*hufeng 2014-11-05 add to aviod ref_count chaos if cci_init and cci_release concurrency happened*/
+				mutex_lock(&ref_count_lock);
+				rc = msm_cci_release(sd);
+				mutex_unlock(&ref_count_lock);
+#else
+				rc = msm_cci_release(sd);
+#endif
+				break;
+			case MSM_CCI_I2C_READ:
+#ifdef VENDOR_EDIT
+/*hufeng 2014-11-05 add to aviod ref_count chaos if cci_init and cci_release concurrency happened*/
+				mutex_lock(&ref_count_lock);
+				rc = msm_cci_i2c_read_bytes(sd, cci_ctrl);
+				mutex_unlock(&ref_count_lock);
+#else
+				rc = msm_cci_i2c_read_bytes(sd, cci_ctrl);
+#endif
+				break;
+			case MSM_CCI_I2C_WRITE:
+#ifdef VENDOR_EDIT
+/*hufeng 2014-11-05 add to aviod ref_count chaos if cci_init and cci_release concurrency happened*/
+				mutex_lock(&ref_count_lock);
+				rc = msm_cci_i2c_write(sd, cci_ctrl);
+				mutex_unlock(&ref_count_lock);
+#else
+				rc = msm_cci_i2c_write(sd, cci_ctrl);
+#endif
+				break;
+			case MSM_CCI_GPIO_WRITE:
+				break;
+			default:
+				rc = -ENOIOCTLCMD;
+		}
+		if(rc>=0){
+			break ;
+		}
+		pr_err("%s:retry=%d\n",__func__,retry);
 	}
 	CDBG("%s line %d rc %d\n", __func__, __LINE__, rc);
 	cci_ctrl->status = rc;
@@ -1298,6 +1351,11 @@ static int msm_cci_probe(struct platform_device *pdev)
 	new_cci_dev->cci_state = CCI_STATE_DISABLED;
 	g_cci_subdev = &new_cci_dev->msm_sd.sd;
 	CDBG("%s cci subdev %p\n", __func__, &new_cci_dev->msm_sd.sd);
+#ifdef VENDOR_EDIT
+/*hufeng 2014-11-05 add to aviod ref_count chaos if cci_init and cci_release concurrency happened*/
+	mutex_init(&ref_count_lock);
+#endif
+	
 	CDBG("%s line %d\n", __func__, __LINE__);
 	return 0;
 

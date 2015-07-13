@@ -129,3 +129,8 @@ obj-$(CONFIG_EFIVAR_FS)		+= efivarfs/
 
 # Patched by YAFFS
 obj-$(CONFIG_YAFFS_FS)		+= yaffs2/
+
+# ifdef VENDOR_EDIT
+# yixue.ge@BSP.Driver, 2014/04/15, Add for exfat filesystem
+obj-$(CONFIG_EXFAT_FS)		+= exfat/
+# endif /*VENDOR_EDIT*/

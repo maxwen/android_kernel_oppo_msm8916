@@ -196,6 +196,10 @@ struct msm_fb_data_type {
 	u32 fb_imgType;
 	int panel_reconfig;
 	u32 panel_orientation;
+//#ifdef VENDOR_EDIT
+/* Xiaori.Yuan@Mobile Phone Software Dept.Driver, 2014/07/21  Add for LCD rotate 180 degree */
+	bool is_panel_inverted;
+//#endif /*VENDOR_EDIT*/
 
 	u32 dst_format;
 	int panel_power_on;

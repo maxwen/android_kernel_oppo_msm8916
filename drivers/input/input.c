@@ -29,6 +29,11 @@
 #include <linux/rcupdate.h>
 #include "input-compat.h"
 
+#ifdef VENDOR_EDIT
+#include <mach/oppo_boot_mode.h>
+#include <mach/oppo_project.h>
+#endif
+
 MODULE_AUTHOR("Vojtech Pavlik <vojtech@suse.cz>");
 MODULE_DESCRIPTION("Input core");
 MODULE_LICENSE("GPL");
@@ -669,10 +674,31 @@ static void input_dev_release_keys(struct input_dev *dev)
 
 	if (is_event_supported(EV_KEY, dev->evbit, EV_MAX)) {
 		for (code = 0; code <= KEY_MAX; code++) {
+		
+		// 0x73 is reported to the event on the volume keys
+		#ifndef VENDOR_EDIT
 			if (is_event_supported(code, dev->keybit, KEY_MAX) &&
 			    __test_and_clear_bit(code, dev->key)) {
 				input_pass_event(dev, EV_KEY, code, 0);
 			}
+		#else
+			if(is_project(OPPO_14005))
+			{
+				if(code != 0x73){
+					if (is_event_supported(code, dev->keybit, KEY_MAX) &&
+					    __test_and_clear_bit(code, dev->key)) {
+						  input_pass_event(dev, EV_KEY, code, 0);
+					}
+				}
+			}
+			else
+			{
+				if (is_event_supported(code, dev->keybit, KEY_MAX) &&
+				    __test_and_clear_bit(code, dev->key)) {
+					  input_pass_event(dev, EV_KEY, code, 0);
+				}
+			}
+		#endif
 		}
 		input_pass_event(dev, EV_SYN, SYN_REPORT, 1);
 	}

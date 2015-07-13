@@ -207,6 +207,16 @@ static struct device_attribute power_supply_attrs[] = {
 	POWER_SUPPLY_ATTR(usb_hc),
 	POWER_SUPPLY_ATTR(usb_otg),
 	POWER_SUPPLY_ATTR(charge_enabled),
+#ifdef VENDOR_EDIT
+/* jingchun.wang@Onlinerd.Driver, 2013/12/16  Add for charge timeout */
+	POWER_SUPPLY_ATTR(authenticate),//wangjc add for authentication
+	POWER_SUPPLY_ATTR(charge_timeout),
+	POWER_SUPPLY_ATTR(fastcharger),
+	POWER_SUPPLY_ATTR(charge_temp_statu),
+	POWER_SUPPLY_ATTR(usb_type),
+	POWER_SUPPLY_ATTR(BatteryRequestPoweroff),
+	POWER_SUPPLY_ATTR(charge_technology),
+#endif
 	/* Properties of type `const char *' */
 	POWER_SUPPLY_ATTR(model_name),
 	POWER_SUPPLY_ATTR(manufacturer),

@@ -21,8 +21,12 @@ obj-$(CONFIG_INPUT_KEYBOARD)	+= keyboard/
 obj-$(CONFIG_INPUT_MOUSE)	+= mouse/
 obj-$(CONFIG_INPUT_JOYSTICK)	+= joystick/
 obj-$(CONFIG_INPUT_TABLET)	+= tablet/
-obj-$(CONFIG_INPUT_TOUCHSCREEN)	+= touchscreen/
+#obj-$(CONFIG_INPUT_TOUCHSCREEN)	+= touchscreen/
 obj-$(CONFIG_INPUT_MISC)	+= misc/
+# ifdef VENDOR_EDIT 
+#chenggang.li@BSP.TP modified for oppo 2014-07-09
+obj-$(CONFIG_INPUT_OPPO)	+= oppo/
+# endif
 
 obj-$(CONFIG_INPUT_APMPOWER)	+= apm-power.o
 obj-$(CONFIG_INPUT_KEYRESET)	+= keyreset.o

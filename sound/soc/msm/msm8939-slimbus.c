@@ -32,6 +32,7 @@
 #include <sound/pcm_params.h>
 #include <soc/qcom/socinfo.h>
 #include <qdsp6v2/msm-pcm-routing-v2.h>
+#include <mach/oppo_project.h>
 #include "../codecs/wcd9xxx-common.h"
 #include "../codecs/wcd9306.h"
 #include "../codecs/wcd9330.h"
@@ -63,6 +64,18 @@
 #define WCD9XXX_MBHC_DEF_RLOADS     5
 #define CODEC_EXT_CLK_RATE         9600000
 
+/*OPPO 2014-08-25 zhzhyon Add for quat i2s*/
+#define PRI_MI2S_ID	(1 << 0)
+#define SEC_MI2S_ID	(1 << 1)
+#define TER_MI2S_ID	(1 << 2)
+#define QUAT_MI2S_ID (1 << 3)
+/*OPPO 2014-08-25 zhzhyon Add end*/
+
+/*OPPO 2014-08-20 zhzhyon Add for share software*/
+static struct regulator * tfa9890_vdd = NULL;
+/*OPPO 2014-08-20 zhzhyon Add end*/
+
+
 #define BTSCO_RATE_8KHZ 8000
 #define BTSCO_RATE_16KHZ 16000
 
@@ -81,12 +94,25 @@ static int msm_btsco_ch = 1;
 static int msm8939_spk_control = 1;
 static int vdd_spkr_gpio = -1;
 static int clk_users;
+/*OPPO 2014-11-18 zhzhyon Delete for sleep currect*/
+#ifndef VENDOR_EDIT
+static int mclk_users;
+#endif
+/*OPPO 2014-11-18 zhzhyon Delete end*/
 static struct platform_device *spdev;
+
+/*OPPO 2014-08-25 zhzhyon Add for quat i2s*/
+static int mi2s_rx_bit_format = SNDRV_PCM_FORMAT_S16_LE;
+/*OPPO 2014-08-25 zhzhyon Add end*/
 
 static int msm_proxy_rx_ch = 2;
 static void *adsp_state_notifier;
 
 struct msm8939_asoc_mach_data {
+	/*OPPO 2014-08-25 zhzhyon Add for quat i2s*/
+	int codec_type;  
+	int ext_pa;
+	/*OPPO 2014-08-25 zhzhyon Add end*/
 	int mclk_gpio;
 	u32 mclk_freq;
 	int us_euro_gpio;
@@ -94,7 +120,22 @@ struct msm8939_asoc_mach_data {
 	struct afe_digital_clk_cfg digital_cdc_clk;
 	struct delayed_work hs_detect_dwork;
 	struct snd_soc_codec *codec;
+	/*OPPO 2014-07-24 zhzhyon Add for tfa9890*/
+	int audio_vdd_en_gpio;
+	int spk_rec_sw;
+	int tfa9890_rst;
+	/*OPPO 2014-07-24 zhzhyon Add end*/
+	/*OPPO 2014-08-26 zhzhyon Add for headset*/
+	//int ap_audio_enable_gpio;
+	/*OPPO 2014-08-26 zhzhyon Add end*/
 };
+/*OPPO 2014-08-25 zhzhyon Add for quat i2s*/
+static atomic_t quat_mi2s_rsc_ref;
+/*OPPO 2014-08-25 zhzhyon Add end*/
+/*OPPO 2014-08-26 zhzhyon Add for headset detect*/
+static struct regulator* hs_det_comp = NULL;
+/*OPPO 2014-08-26 zhzhyon Add end*/
+
 
 static int msm_snd_enable_codec_ext_clk(struct snd_soc_codec *codec, int enable,
 					bool dapm);
@@ -108,8 +149,19 @@ static struct wcd9xxx_mbhc_config wcd9xxx_mbhc_cfg = {
 	.gpio = 0,
 	.gpio_irq = 0,
 	.gpio_level_insert = 0,
+	/*OPPO 2014-10-23 zhzhyon Modify for headset detect*/
+	#ifndef VENDOR_EDIT
 	.detect_extn_cable = true,
+	#else
+	.detect_extn_cable = false,
+	#endif
+	/*OPPO 2014-08-26 zhzhyon Modify for headset detect*/
+	#if 0
 	.micbias_enable_flags = 1 << MBHC_MICBIAS_ENABLE_THRESHOLD_HEADSET,
+	#else
+	.micbias_enable_flags = 1 << MBHC_MICBIAS_ENABLE_THRESHOLD_HEADSET | 1 << MBHC_MICBIAS_ENABLE_REGULAR_HEADSET,
+	#endif
+	/*OPPO 2014-08-26 zhzhyon Modify end*/
 	.insert_detect = true,
 	.swap_gnd_mic = NULL,
 	.cs_enable_flags = (1 << MBHC_CS_ENABLE_POLLING |
@@ -199,6 +251,28 @@ static void *def_codec_mbhc_cal(void)
 	return tapan_cal;
 }
 
+/*OPPO 2014-08-25 zhzhyon Add for quat i2s*/
+static struct afe_clk_cfg mi2s_rx_clk = {
+	AFE_API_VERSION_I2S_CONFIG,
+	Q6AFE_LPASS_IBIT_CLK_1_P536_MHZ,
+	Q6AFE_LPASS_OSR_CLK_12_P288_MHZ,
+	Q6AFE_LPASS_CLK_SRC_INTERNAL,
+	Q6AFE_LPASS_CLK_ROOT_DEFAULT,
+	Q6AFE_LPASS_MODE_CLK1_VALID,
+	0,
+};
+
+static struct afe_clk_cfg mi2s_tx_clk = {
+	AFE_API_VERSION_I2S_CONFIG,
+	Q6AFE_LPASS_IBIT_CLK_1_P536_MHZ,
+	Q6AFE_LPASS_OSR_CLK_12_P288_MHZ,
+	Q6AFE_LPASS_CLK_SRC_INTERNAL,
+	Q6AFE_LPASS_CLK_ROOT_DEFAULT,
+	Q6AFE_LPASS_MODE_CLK1_VALID,
+	0,
+};
+/*OPPO 2014-08-25 zhzhyon Add end*/
+
 struct cdc_pinctrl_info {
 	struct pinctrl *pinctrl;
 	struct pinctrl_state *cdc_slim_sus;
@@ -207,6 +281,10 @@ struct cdc_pinctrl_info {
 	struct pinctrl_state *cross_conn_det_act;
 	struct pinctrl_state *cdc_vdd_spkr_sus;
 	struct pinctrl_state *cdc_vdd_spkr_act;
+	/*OPPO 2014-08-25 zhzhyon Add for quat i2s*/
+	struct pinctrl_state *cdc_lines_sus;
+	struct pinctrl_state *cdc_lines_act;
+	/*OPPO 2014-08-25 zhzhyon Add end*/
 };
 
 struct cdc_pinctrl_info pinctrl_info;
@@ -275,7 +353,8 @@ static int msm8939_set_spk(struct snd_kcontrol *kcontrol,
 	return 1;
 }
 
-
+/*OPPO 2014-11-18 zhzhyon Modify for sleep current*/
+#ifndef VENDOR_EDIT
 static int msm_snd_enable_codec_ext_clk(struct snd_soc_codec *codec, int enable,
 					bool dapm)
 {
@@ -292,15 +371,22 @@ static int msm_snd_enable_codec_ext_clk(struct snd_soc_codec *codec, int enable,
 		if (clk_users != 1)
 			goto exit;
 		pr_debug("clock enable\n");
-		pdata->digital_cdc_clk.clk_val = 9600000;
-		ret = afe_set_digital_codec_core_clock(
-			AFE_PORT_ID_PRIMARY_MI2S_RX,
-			&pdata->digital_cdc_clk);
-		if (ret < 0) {
-			pr_err("%s: failed to enable the MCLK\n",
-							__func__);
-			goto exit;
+		if (!mclk_users) 
+		{
+			pdata->digital_cdc_clk.clk_val = 9600000;
+			ret = afe_set_digital_codec_core_clock(
+				AFE_PORT_ID_PRIMARY_MI2S_RX,
+				&pdata->digital_cdc_clk);
+			if (ret < 0) {
+				pr_err("%s: failed to enable the MCLK\n",
+								__func__);
+					clk_users--;
+				goto exit;
+			}
 		}
+		mclk_users++;
+		/*OPPO 2014-08-25 zhzhyon Delete for quat i2s*/
+		#if 0
 		/* Reset the CDC PDM TLMM pins to active state */
 		ret = pinctrl_select_state(pinctrl_info.pinctrl,
 					pinctrl_info.cdc_slim_act);
@@ -310,6 +396,88 @@ static int msm_snd_enable_codec_ext_clk(struct snd_soc_codec *codec, int enable,
 			mutex_unlock(&pdata->cdc_mclk_mutex);
 			return -EIO;
 		}
+		#endif
+		/*OPPO 2014-08-25 zhzhyon Delete end*/
+		if (!strcmp(card->name, "msm8939-tomtom9330-snd-card"))
+			tomtom_mclk_enable(codec, 1, dapm);
+		else
+			tapan_mclk_enable(codec, 1, dapm);
+	} else {
+		if (clk_users > 0) {
+			clk_users--;
+			mclk_users--;
+			if (clk_users == 0) {
+				if (!strcmp(card->name,
+					"msm8939-tomtom9330-snd-card"))
+					tomtom_mclk_enable(codec, 0, dapm);
+				else
+					tapan_mclk_enable(codec, 0, dapm);
+				/*
+				 * Reset the CDC PDM TLMM pins
+				 * to a default state
+				 */
+				/*OPPO 2014-08-25 zhzhyon Delete for quat i2s*/
+				#if 0
+				ret = pinctrl_select_state(
+					pinctrl_info.pinctrl,
+					pinctrl_info.cdc_slim_sus);
+				if (ret != 0) {
+					pr_err("%s: Failed disable TLMM pins\n",
+								__func__);
+					mutex_unlock(&pdata->cdc_mclk_mutex);
+					return -EIO;
+				}
+				#endif
+				/*OPPO 2014-08-25 zhzhyon Delete end*/
+				if (!mclk_users) {
+					pdata->digital_cdc_clk.clk_val = 0;
+					ret = afe_set_digital_codec_core_clock(
+						AFE_PORT_ID_PRIMARY_MI2S_RX,
+						&pdata->digital_cdc_clk);
+					if (ret < 0)
+						pr_err("%s: failed to disable the MCLK\n",
+									__func__);
+				}
+			}
+		} else {
+			pr_err("%s: Error releasing codec MCLK\n", __func__);
+			ret = -EINVAL;
+			goto exit;
+		}
+	}
+exit:
+	mutex_unlock(&pdata->cdc_mclk_mutex);
+	return ret;
+}
+#else
+static int msm_snd_enable_codec_ext_clk(struct snd_soc_codec *codec, int enable,
+					bool dapm)
+{
+	int ret = 0;
+	struct snd_soc_card *card = codec->card;
+	struct msm8939_asoc_mach_data *pdata = snd_soc_card_get_drvdata(card);
+
+	pr_debug("%s: enable = %d clk_users = %d\n",
+		__func__, enable, clk_users);
+
+	mutex_lock(&pdata->cdc_mclk_mutex);
+	if (enable) {
+		clk_users++;
+		if (clk_users != 1)
+			goto exit;
+		pr_debug("clock enable\n");
+
+		pdata->digital_cdc_clk.clk_val = 9600000;
+		ret = afe_set_digital_codec_core_clock(
+				AFE_PORT_ID_PRIMARY_MI2S_RX,
+				&pdata->digital_cdc_clk);
+		if (ret < 0) {
+			pr_err("%s: failed to enable the MCLK\n",
+								__func__);
+			clk_users--;
+			goto exit;
+		}
+
 		if (!strcmp(card->name, "msm8939-tomtom9330-snd-card"))
 			tomtom_mclk_enable(codec, 1, dapm);
 		else
@@ -323,26 +491,15 @@ static int msm_snd_enable_codec_ext_clk(struct snd_soc_codec *codec, int enable,
 					tomtom_mclk_enable(codec, 0, dapm);
 				else
 					tapan_mclk_enable(codec, 0, dapm);
-				/*
-				 * Reset the CDC PDM TLMM pins
-				 * to a default state
-				 */
-				ret = pinctrl_select_state(
-					pinctrl_info.pinctrl,
-					pinctrl_info.cdc_slim_sus);
-				if (ret != 0) {
-					pr_err("%s: Failed disable TLMM pins\n",
-								__func__);
-					mutex_unlock(&pdata->cdc_mclk_mutex);
-					return -EIO;
-				}
+
+
 				pdata->digital_cdc_clk.clk_val = 0;
 				ret = afe_set_digital_codec_core_clock(
-					AFE_PORT_ID_PRIMARY_MI2S_RX,
-					&pdata->digital_cdc_clk);
+						AFE_PORT_ID_PRIMARY_MI2S_RX,
+						&pdata->digital_cdc_clk);
 				if (ret < 0)
 					pr_err("%s: failed to disable the MCLK\n",
-								__func__);
+									__func__);
 			}
 		} else {
 			pr_err("%s: Error releasing codec MCLK\n", __func__);
@@ -354,6 +511,8 @@ exit:
 	mutex_unlock(&pdata->cdc_mclk_mutex);
 	return ret;
 }
+#endif
+/*OPPO 2014-11-18 zhzhyon Modify end*/
 
 static int msm8x16_mclk_event(struct snd_soc_dapm_widget *w,
 		struct snd_kcontrol *kcontrol, int event)
@@ -467,6 +626,44 @@ static int slim0_rx_sample_rate_put(struct snd_kcontrol *kcontrol,
 
 	return 0;
 }
+/*OPPO 2014-07-30 zhzhyon Add for speaker and receiver*/
+static int speaker_receiver_get(struct snd_kcontrol *kcontrol,
+	struct snd_ctl_elem_value *ucontrol)
+{
+	return 0;
+}
+
+static int speaker_receiver_put(struct snd_kcontrol *kcontrol,
+	struct snd_ctl_elem_value *ucontrol)
+{
+	struct msm8939_asoc_mach_data *pdata = NULL;
+	struct snd_soc_codec *codec = snd_kcontrol_chip(kcontrol);
+
+	pdata = snd_soc_card_get_drvdata(codec->card);
+
+	switch (ucontrol->value.integer.value[0]) {
+	case 1:
+		pr_err("speaker_receiver_put:select receiver\n");
+		if (gpio_is_valid(pdata->spk_rec_sw)) 
+		{
+			gpio_direction_output(pdata->spk_rec_sw, 1);
+		}
+		break;
+	case 0:
+	default:
+		pr_err("speaker_receiver_put:select speaker\n");
+		if (gpio_is_valid(pdata->spk_rec_sw)) 
+		{
+			gpio_direction_output(pdata->spk_rec_sw, 0);
+		}
+
+		break;
+	}
+	return 0;
+}
+
+/*OPPO 2014-07-30 zhzhyon Add end*/
+
 
 static int slim0_rx_bit_format_get(struct snd_kcontrol *kcontrol,
 	struct snd_ctl_elem_value *ucontrol)
@@ -574,6 +771,9 @@ static const char *const slim0_tx_ch_text[] = {"One", "Two", "Three", "Four",
 static char const *rx_bit_format_text[] = {"S16_LE", "S24_LE"};
 static char const *slim0_rx_sample_rate_text[] = {"KHZ_48", "KHZ_96",
 					"KHZ_192"};
+/*OPPO 2014-07-30 zhzhyon Add for speaker and receiver*/
+static char const *spk_rec_text[] = {"speaker_on", "receiver_on"};
+/*OPPO 2014-07-30 zhzhyon Add end*/
 
 static const struct soc_enum msm_snd_enum[] = {
 	SOC_ENUM_SINGLE_EXT(2, spk_function),
@@ -581,6 +781,10 @@ static const struct soc_enum msm_snd_enum[] = {
 	SOC_ENUM_SINGLE_EXT(8, slim0_tx_ch_text),
 	SOC_ENUM_SINGLE_EXT(2, rx_bit_format_text),
 	SOC_ENUM_SINGLE_EXT(3, slim0_rx_sample_rate_text),
+	/*OPPO 2014-07-30 zhzhyon Add for speaker and receiver*/
+	SOC_ENUM_SINGLE_EXT(2, spk_rec_text),
+	/*OPPO 2014-07-30 zhzhyon Add end*/
+
 };
 
 static const struct snd_kcontrol_new msm_snd_controls[] = {
@@ -594,7 +798,35 @@ static const struct snd_kcontrol_new msm_snd_controls[] = {
 			slim0_rx_bit_format_get, slim0_rx_bit_format_put),
 	SOC_ENUM_EXT("SLIM_0_RX SampleRate", msm_snd_enum[4],
 			slim0_rx_sample_rate_get, slim0_rx_sample_rate_put),
+	/*OPPO 2014-07-30 zhzhyon Add for speaker and receiver*/
+	SOC_ENUM_EXT("Spk_Rec_SW", msm_snd_enum[5],
+			speaker_receiver_get, speaker_receiver_put),	
+	/*OPPO 2014-07-30 zhzhyon Add end*/
+
 };
+/*OPPO 2014-07-23 zhzhyon Add for tfa9890*/
+static int msm8939_mi2s_be_hw_params_fixup(struct snd_soc_pcm_runtime *rtd,
+            struct snd_pcm_hw_params *params)
+{
+    struct snd_interval *rate = hw_param_interval(params,
+    SNDRV_PCM_HW_PARAM_RATE);
+
+    struct snd_interval *channels = hw_param_interval(params,
+    SNDRV_PCM_HW_PARAM_CHANNELS);
+
+    pr_debug("%s rate->min %d rate->max %d channels->min %u channels->max %u ()\n", __func__,
+            rate->min, rate->max, channels->min, channels->max);
+
+
+	param_set_mask(params, SNDRV_PCM_HW_PARAM_FORMAT,
+					SNDRV_PCM_FORMAT_S16_LE);
+
+    rate->min = rate->max = 48000;
+    channels->min = channels->max = 1;
+
+    return 0;
+}
+/*OPPO 2014-07-23 zhzhyon Add end*/
 
 static int msm_be_hw_params_fixup(struct snd_soc_pcm_runtime *rtd,
 				struct snd_pcm_hw_params *params)
@@ -709,6 +941,52 @@ static void msm_afe_clear_config(void)
 	afe_clear_config(AFE_SLIMBUS_SLAVE_CONFIG);
 }
 
+/*OPPO 2014-08-25 zhzhyon Add for quat i2s*/
+static int ext_mi2s_clk_ctl(struct snd_pcm_substream *substream, bool enable)
+{
+	int ret = 0;
+
+	if (enable) {
+		if (substream->stream == SNDRV_PCM_STREAM_PLAYBACK) {
+			mi2s_rx_clk.clk_val1 = Q6AFE_LPASS_IBIT_CLK_1_P536_MHZ;
+			ret = afe_set_lpass_clock(
+				AFE_PORT_ID_QUATERNARY_MI2S_RX,
+				&mi2s_rx_clk);
+		} else if (substream->stream == SNDRV_PCM_STREAM_CAPTURE) {
+			mi2s_tx_clk.clk_val1 = Q6AFE_LPASS_IBIT_CLK_1_P536_MHZ;
+			ret = afe_set_lpass_clock(
+				AFE_PORT_ID_QUATERNARY_MI2S_TX,
+				&mi2s_tx_clk);
+		} else
+			pr_err("%s:Not valid substream.\n", __func__);
+
+		if (ret < 0)
+			pr_err("%s:afe_set_lpass_clock failed ret=%d\n",
+					__func__, ret);
+	} else {
+		if (substream->stream == SNDRV_PCM_STREAM_PLAYBACK) {
+			mi2s_rx_clk.clk_val1 = Q6AFE_LPASS_IBIT_CLK_DISABLE;
+			ret = afe_set_lpass_clock(
+				AFE_PORT_ID_QUATERNARY_MI2S_RX,
+				&mi2s_rx_clk);
+		} else if (substream->stream == SNDRV_PCM_STREAM_CAPTURE) {
+			mi2s_tx_clk.clk_val1 = Q6AFE_LPASS_IBIT_CLK_DISABLE;
+			ret = afe_set_lpass_clock(
+				AFE_PORT_ID_QUATERNARY_MI2S_TX,
+				&mi2s_tx_clk);
+		} else
+			pr_err("%s:Not valid substream %d\n", __func__,
+					substream->stream);
+
+		if (ret < 0)
+				pr_err("%s:afe_set_lpass_clock failed ret=%d\n",
+					__func__, ret);
+	}
+	return ret;
+}
+
+/*OPPO 2014-08-25 zhzhyon Add end*/
+
 static int  msm8939_adsp_state_callback(struct notifier_block *nb,
 		unsigned long value, void *priv)
 {
@@ -769,6 +1047,7 @@ static int msm8939_wcd93xx_codec_up(struct snd_soc_codec *codec)
 	return err;
 }
 
+/*OPPO 2014-08-25 zhzhyon Add for quat i2s*/
 static int msm8939_gpio_set_mux_ctl(void)
 {
 	void __iomem *vaddr = NULL;
@@ -782,7 +1061,7 @@ static int msm8939_gpio_set_mux_ctl(void)
 		return -ENOMEM;
 	}
 	val = ioread32(vaddr);
-	val = val | 0x5000dff;
+	val = val | 0x0;
 	iowrite32(val, vaddr);
 	pr_debug("%s:val_mic_mux gpio %x\n", __func__, val);
 	iounmap(vaddr);
@@ -794,12 +1073,12 @@ static int msm8939_gpio_set_mux_ctl(void)
 		return -ENOMEM;
 	}
 	val = ioread32(vaddr);
-	val = val | 0x000800BF;
+	val = val | 0x00000002;
 	iowrite32(val, vaddr);
 	pr_debug("%s:val_spkr_mux gpio %x\n", __func__, val);
 	iounmap(vaddr);
 
-	vaddr = ioremap(0x103f004 , 4);
+	vaddr = ioremap(0x103f004, 4);
 	if (!vaddr)
 		pr_err("%s ioremap failure for addr\n",
 					__func__);
@@ -815,6 +1094,7 @@ static int msm8939_gpio_set_mux_ctl(void)
 	iounmap(vaddr);
 	return 0;
 }
+/*OPPO 2014-08-25 zhzhyon Add end*/
 
 static int msm8939_codec_event_cb(struct snd_soc_codec *codec,
 		enum wcd9xxx_codec_event codec_event)
@@ -822,11 +1102,13 @@ static int msm8939_codec_event_cb(struct snd_soc_codec *codec,
 	int ret = 0;
 	switch (codec_event) {
 	case WCD9XXX_CODEC_EVENT_CODEC_UP:
+		/*OPPO 2014-08-25 zhzhyon Add for quat i2s*/
 		ret = msm8939_gpio_set_mux_ctl();
 		if (ret < 0) {
 			pr_err("%s: failed to set MUX ctl\n", __func__);
 			return ret;
 		}
+		/*OPPO 2014-08-25 zhzhyon Add end*/
 		return msm8939_wcd93xx_codec_up(codec);
 	default:
 		pr_err("%s: UnSupported codec event %d\n",
@@ -984,6 +1266,12 @@ static int msm_audrx_init(struct snd_soc_pcm_runtime *rtd)
 	struct snd_soc_dai *codec_dai = rtd->codec_dai;
 	struct snd_soc_card *card = codec->card;
 	struct msm8939_asoc_mach_data *pdata = snd_soc_card_get_drvdata(card);
+	/*OPPO 2014-08-25 zhzhyon Delete for quat i2s*/
+	#if 0
+	void __iomem *vaddr = NULL;
+	int val = 0;
+	#endif
+	/*OPPO 2014-08-25 zhzhyon Delete end*/
 	int ret = 0;
 
 	/*
@@ -1031,12 +1319,60 @@ static int msm_audrx_init(struct snd_soc_pcm_runtime *rtd)
 			__func__, ret);
 		return ret;
 	}
+	/*OPPO 2014-08-25 zhzhyon Modify for quat i2s*/
+	#if 0
+	vaddr = ioremap(LPASS_CSR_GP_IO_MUX_MIC_CTL , 4);
+	if (!vaddr) {
+		pr_err("%s ioremap failure for addr %x\n",
+				__func__,
+				LPASS_CSR_GP_IO_MUX_MIC_CTL);
+		return -ENOMEM;
+	}
+	val = ioread32(vaddr);
+	val = val | 0x5000dff;
+	iowrite32(val, vaddr);
+	pr_err("%s:val_mic_mux gpio %x\n", __func__, val);
+	iounmap(vaddr);
+	vaddr = ioremap(LPASS_CSR_GP_IO_MUX_SPKR_CTL , 4);
+	if (!vaddr) {
+		pr_err("%s ioremap failure for addr %x\n",
+				__func__,
+				LPASS_CSR_GP_IO_MUX_SPKR_CTL);
+		return -ENOMEM;
+	#else
 	ret = msm8939_gpio_set_mux_ctl();
 	if (ret) {
 		pr_err("%s: Failed to set MUX CTL %d\n",
 			__func__, ret);
 		return ret;
+	#endif
+	/*OPPO 2014-08-25 zhzhyon Modify end*/
+
 	}
+	/*OPPO 2014-08-25 zhzhyon Delete for quat i2s*/
+	#if 0
+	val = ioread32(vaddr);
+	val = val | 0x000800BF;
+	iowrite32(val, vaddr);
+	pr_err("%s:val_spkr_mux gpio %x\n", __func__, val);
+	iounmap(vaddr);
+
+	vaddr = ioremap(0x103f004 , 4);
+	if (!vaddr)
+		pr_err("%s ioremap failure for addr\n",
+					__func__);
+	val = ioread32(vaddr);
+	pr_err("%s:val1 %x\n", __func__, val);
+	iounmap(vaddr);
+	vaddr = ioremap(0x103f000 , 4);
+	if (!vaddr)
+		pr_err("%s ioremap failure for addr2\n",
+					__func__);
+	val = ioread32(vaddr);
+	pr_err("%s:val2 %x\n", __func__, val);
+	iounmap(vaddr);
+	#endif
+	/*OPPO 2014-08-25 zhzhyon Delete end*/
 
 	wcd9xxx_mbhc_cfg.calibration = def_codec_mbhc_cal();
 	if (wcd9xxx_mbhc_cfg.calibration) {
@@ -1051,6 +1387,7 @@ static int msm_audrx_init(struct snd_soc_pcm_runtime *rtd)
 	} else {
 		ret = -ENOMEM;
 	}
+	/*OPPO 2014-08-25 zhzhyon Add for quat i2s*/
 	adsp_state_notifier =
 	    subsys_notif_register_notifier("modem",
 					   &adsp_state_notifier_block);
@@ -1060,7 +1397,7 @@ static int msm_audrx_init(struct snd_soc_pcm_runtime *rtd)
 		ret = -EFAULT;
 	}
 	tapan_event_register(msm8939_codec_event_cb, rtd->codec);
-
+	/*OPPO 2014-08-25 zhzhyon Add end*/
 	return ret;
 }
 
@@ -1173,6 +1510,209 @@ static int msm_slim_0_tx_be_hw_params_fixup(struct snd_soc_pcm_runtime *rtd,
 
 	return 0;
 }
+
+/*OPPO 2014-08-25 zhzhyon Add for quat i2s*/
+static void msm_quat_mi2s_snd_shutdown(struct snd_pcm_substream *substream)
+{
+	int ret = 0;
+	struct snd_soc_pcm_runtime *rtd = substream->private_data;
+	struct snd_soc_card *card = rtd->card;
+	struct msm8939_asoc_mach_data *pdata = snd_soc_card_get_drvdata(card);
+
+	pr_debug("%s(): substream = %s  stream = %d, ext_pa = %d\n", __func__,
+		 substream->name, substream->stream, pdata->ext_pa);
+
+	if ((!pdata->codec_type) &&
+		((pdata->ext_pa & QUAT_MI2S_ID) == QUAT_MI2S_ID)) {
+		pr_err("release QUAT mi2s\n");
+		ret = ext_mi2s_clk_ctl(substream, false);
+		if (ret < 0)
+			pr_err("%s:clock disable failed\n", __func__);
+		if (atomic_read(&quat_mi2s_rsc_ref) > 0)
+			atomic_dec(&quat_mi2s_rsc_ref);
+	}
+}
+static int conf_int_codec_mux_quat(struct msm8939_asoc_mach_data *pdata)
+{
+	int ret = 0;
+	int val = 0;
+	void __iomem *vaddr = NULL;
+
+	/* configure the Primary, Sec and Tert mux for Mi2S interface
+	 * slave select to invalid state, for machine mode this
+	 * should move to HW, I do not like to do it here
+	 */
+	vaddr = ioremap(LPASS_CSR_GP_IO_MUX_SPKR_CTL , 4);
+	if (!vaddr) {
+		pr_err("%s ioremap failure for addr %x",
+				__func__, LPASS_CSR_GP_IO_MUX_SPKR_CTL);
+		return -ENOMEM;
+	}
+	/* enable sec MI2S interface to TLMM GPIO */
+	val = ioread32(vaddr);
+	val = val | 0x00000002;
+	pr_debug("%s: quat mux val = %x\n", __func__, val);
+
+	iowrite32(val, vaddr);
+	iounmap(vaddr);
+	vaddr = ioremap(LPASS_CSR_GP_IO_MUX_MIC_CTL , 4);
+	if (!vaddr) {
+		pr_err("%s ioremap failure for addr %x",
+				__func__, LPASS_CSR_GP_IO_MUX_MIC_CTL);
+		return -ENOMEM;
+	}
+	/* enable QUAT MI2S interface to TLMM GPIO */
+	val = ioread32(vaddr);
+	val = val | 0x00020002;
+	pr_debug("%s: QUAT mux configuration = %x\n", __func__, val);
+	iowrite32(val, vaddr);
+	iounmap(vaddr);
+	return ret;
+}
+/*OPPO 2014-09-02 zhzhyon Delete for big current*/
+#ifndef VENDOR_EDIT
+static int msm_snd_enable_quat_mclk(struct snd_soc_codec *codec, int enable,
+					bool dapm)
+{
+	int ret = 0;
+	struct snd_soc_card *card = codec->card;
+	struct msm8939_asoc_mach_data *pdata = snd_soc_card_get_drvdata(card);
+
+	pr_debug("%s: enable = %d clk_users = %d\n",
+		__func__, enable, mclk_users);
+
+	pr_debug("clock enable\n");
+	mutex_lock(&pdata->cdc_mclk_mutex);
+	if (enable) {
+		mclk_users++;
+		if (mclk_users != 1)
+			goto exit;
+		else {
+			pdata->digital_cdc_clk.clk_val = 9600000;
+			ret = afe_set_digital_codec_core_clock(
+				AFE_PORT_ID_QUATERNARY_MI2S_RX,
+				&pdata->digital_cdc_clk);
+			if (ret < 0) {
+				pr_err("%s: failed to enable the MCLK\n",
+						__func__);
+				mclk_users--;
+				goto exit;
+			}
+		}
+	} else {
+		mclk_users--;
+		if (!mclk_users) {
+			pdata->digital_cdc_clk.clk_val = 0;
+			ret = afe_set_digital_codec_core_clock(
+				AFE_PORT_ID_QUATERNARY_MI2S_RX,
+				&pdata->digital_cdc_clk);
+			if (ret < 0) {
+				pr_err("%s: failed to enable the MCLK\n",
+						__func__);
+				goto exit;
+			}
+		}
+	}
+exit:
+	mutex_unlock(&pdata->cdc_mclk_mutex);
+	return ret;
+}
+#endif
+/*OPPO 2014-09-02 zhzhyon Delete end*/
+
+static int msm_quat_mi2s_snd_startup(struct snd_pcm_substream *substream)
+{
+	struct snd_soc_pcm_runtime *rtd = substream->private_data;
+	struct snd_soc_card *card = rtd->card;
+	struct snd_soc_dai *cpu_dai = rtd->cpu_dai;
+	/*OPPO 2014-09-02 zhzhyon Delete for bit current*/
+	#ifndef VENDOR_EDIT
+	struct snd_soc_codec *codec = rtd->codec;
+	#endif
+	/*OPPO 2014-09-02 zhzhyon Delete end*/
+	struct msm8939_asoc_mach_data *pdata = snd_soc_card_get_drvdata(card);
+	int ret = 0;
+
+	pr_err("%s(): substream = %s  stream = %d\n", __func__,
+		 substream->name, substream->stream);
+
+	if ((!pdata->codec_type) &&
+		((pdata->ext_pa & QUAT_MI2S_ID) == QUAT_MI2S_ID)) {
+		ret = conf_int_codec_mux_quat(pdata);
+		if (ret < 0) {
+			pr_err("%s: failed to conf internal codec mux\n",
+					__func__);
+			return ret;
+		}
+		/*OPPO 2014-09-02 zhzhyon Delete for bit current*/
+		#ifndef VENDOR_EDIT
+		ret = msm_snd_enable_quat_mclk(codec, 1, true);
+		if (ret < 0) {
+			pr_err("failed to enable mclk\n");
+			return ret;
+		}
+		#endif
+		/*OPPO 2014-09-02 zhzhyon Delete end*/
+		pr_err("aquire QUAT mi2s\n");
+		ret = ext_mi2s_clk_ctl(substream, true);
+		if (ret < 0) {
+			pr_err("%s: failed to enable bit clock\n",
+					__func__);
+			goto err;
+		}
+		ret = pinctrl_select_state(pinctrl_info.pinctrl,
+				pinctrl_info.cdc_lines_act);
+		if (ret < 0) {
+			pr_err("%s: failed to select the gpio's state\n",
+					__func__);
+			goto err1;
+		}
+	} else {
+		pr_err("%s: error codec type\n", __func__);
+	}
+
+	if (atomic_inc_return(&quat_mi2s_rsc_ref) == 1) {
+		ret = snd_soc_dai_set_fmt(cpu_dai, SND_SOC_DAIFMT_CBS_CFS);
+		if (ret < 0)
+			pr_err("%s: set fmt cpu dai failed\n", __func__);
+	}
+	return ret;
+
+err1:
+	ret = ext_mi2s_clk_ctl(substream, false);
+	if (ret < 0)
+		pr_err("%s:failed to disable sclk\n", __func__);
+
+err:
+	/*OPPO 2014-09-02 zhzhyon Delete for big current*/
+	#ifndef VENDOR_EDIT
+	ret = msm_snd_enable_quat_mclk(codec, 0, true);
+	if (ret < 0)
+		pr_err("%s:failed to disable mclk\n", __func__);
+	#endif
+	/*OPPO 2014-09-02 zhzhyon Delete end*/
+
+	return ret;
+}
+static int msm_mi2s_snd_hw_params(struct snd_pcm_substream *substream,
+			     struct snd_pcm_hw_params *params)
+{
+	pr_debug("%s(): substream = %s  stream = %d\n", __func__,
+		 substream->name, substream->stream);
+	param_set_mask(params, SNDRV_PCM_HW_PARAM_FORMAT, mi2s_rx_bit_format);
+	return 0;
+}
+
+
+static struct snd_soc_ops msm8x16_quat_mi2s_be_ops = {
+	.startup = msm_quat_mi2s_snd_startup,
+	.hw_params = msm_mi2s_snd_hw_params,
+	.shutdown = msm_quat_mi2s_snd_shutdown,
+};
+
+
+
+/*OPPO 2014-08-25 zhzhyon Add end*/
 
 static struct snd_soc_ops slimbus_be_ops = {
 	.hw_params = msm_snd_hw_params,
@@ -1900,6 +2440,35 @@ static struct snd_soc_dai_link msm8x16_dai[] = {
 		.codec_dai_name = "snd-soc-dummy-dai",
 		.codec_name = "snd-soc-dummy",
 	},
+	/*OPPO 2014-08-25 zhzhyon Add for quat i2s*/
+	{
+		.name = LPASS_BE_QUAT_MI2S_RX,
+		.stream_name = "Quaternary MI2S Playback",
+		.cpu_dai_name = "msm-dai-q6-mi2s.3",
+		.platform_name = "msm-pcm-routing",
+		.codec_dai_name = "snd-soc-dummy-dai",
+		.codec_name = "snd-soc-dummy",
+		.no_pcm = 1,
+		.be_id = MSM_BACKEND_DAI_QUATERNARY_MI2S_RX,
+		.be_hw_params_fixup = msm8939_mi2s_be_hw_params_fixup,//msm_be_hw_params_fixup,
+		.ops = &msm8x16_quat_mi2s_be_ops,
+		.ignore_pmdown_time = 1, /* dai link has playback support */
+		.ignore_suspend = 1,
+	},
+	{
+		.name = LPASS_BE_QUAT_MI2S_TX,
+		.stream_name = "Quaternary MI2S Capture",
+		.cpu_dai_name = "msm-dai-q6-mi2s.3",
+		.platform_name = "msm-pcm-routing",
+		.codec_dai_name = "snd-soc-dummy-dai",
+		.codec_name = "snd-soc-dummy",
+		.no_pcm = 1,
+		.be_id = MSM_BACKEND_DAI_QUATERNARY_MI2S_TX,
+		.be_hw_params_fixup = msm_be_hw_params_fixup,
+		.ops = &msm8x16_quat_mi2s_be_ops,
+		.ignore_suspend = 1,
+	},
+	/*OPPO 2014-08-25 zhzhyon Add end*/
 	/* Backend I2S DAI Links */
 	{
 		.name = LPASS_BE_INT_BT_SCO_RX,
@@ -2064,8 +2633,14 @@ static bool msm8939_swap_gnd_mic(struct snd_soc_codec *codec)
 	gpio_set_value_cansleep(pdata->us_euro_gpio, !value);
 	return true;
 }
-
+/*OPPO 2014-08-25 zhzhyon Modify for slim*/
+#if 0
 static int cdc_slim_get_pinctrl(struct platform_device *pdev)
+#else
+static int cdc_slim_get_pinctrl(struct platform_device *pdev, int ext_pa)
+#endif
+/*OPPO 2014-08-25 zhzhyon Modify end*/
+
 {
 	struct pinctrl *pinctrl;
 	int ret;
@@ -2076,28 +2651,61 @@ static int cdc_slim_get_pinctrl(struct platform_device *pdev)
 		return -EINVAL;
 	}
 	pinctrl_info.pinctrl = pinctrl;
-	/* get all the states handles from Device Tree*/
-	pinctrl_info.cdc_slim_sus = pinctrl_lookup_state(pinctrl,
-							"cdc_slim_lines_sus");
-	if (IS_ERR(pinctrl_info.cdc_slim_sus)) {
-		pr_err("%s: Unable to get pinctrl suspend state handle\n",
+	/*OPPO 2014-8-25 zhzhyon Add for quat i2s*/
+	if(!(ext_pa & QUAT_MI2S_ID)) 
+	{
+		/*OPPO 2014-08-25 zhzhyon Add end*/
+		/* get all the states handles from Device Tree*/
+		pinctrl_info.cdc_slim_sus = pinctrl_lookup_state(pinctrl,
+								"cdc_slim_lines_sus");
+		if (IS_ERR(pinctrl_info.cdc_slim_sus)) {
+			pr_err("%s: Unable to get pinctrl suspend state handle\n",
+									__func__);
+			return -EINVAL;
+		}
+		pinctrl_info.cdc_slim_act = pinctrl_lookup_state(pinctrl,
+								"cdc_slim_lines_act");
+		if (IS_ERR(pinctrl_info.cdc_slim_act)) {
+			pr_err("%s: Unable to get pinctrl active state handle\n",
+									__func__);
+			return -EINVAL;
+		}
+		/* Reset the CDC PDM TLMM pins to a default state */
+		ret = pinctrl_select_state(pinctrl_info.pinctrl,
+						pinctrl_info.cdc_slim_sus);
+		if (ret != 0) {
+			pr_err("%s: Failed to disable the TLMM pins\n", __func__);
+			return -EIO;
+		}
+	/*OPPO 2014-08-25 zhzhyon Add for quat i2s*/
+        }
+	 else 
+	 {
+		pr_info("QUAT pinctrl\n");
+		pinctrl_info.cdc_lines_sus = pinctrl_lookup_state(pinctrl,
+			"cdc_lines_quat_ext_sus");
+		if (IS_ERR(pinctrl_info.cdc_lines_sus)) {
+			pr_err("%s: Unable to get pinctrl disable state handle\n",
 								__func__);
-		return -EINVAL;
-	}
-	pinctrl_info.cdc_slim_act = pinctrl_lookup_state(pinctrl,
-							"cdc_slim_lines_act");
-	if (IS_ERR(pinctrl_info.cdc_slim_act)) {
-		pr_err("%s: Unable to get pinctrl active state handle\n",
+			return -EINVAL;
+		}
+		pinctrl_info.cdc_lines_act = pinctrl_lookup_state(pinctrl,
+			"cdc_lines_quat_ext_act");
+		if (IS_ERR(pinctrl_info.cdc_lines_act)) {
+			pr_err("%s: Unable to get pinctrl disable state handle\n",
 								__func__);
-		return -EINVAL;
-	}
-	/* Reset the CDC PDM TLMM pins to a default state */
+			return -EINVAL;
+		}
 	ret = pinctrl_select_state(pinctrl_info.pinctrl,
-					pinctrl_info.cdc_slim_sus);
+					pinctrl_info.cdc_lines_act);
 	if (ret != 0) {
 		pr_err("%s: Failed to disable the TLMM pins\n", __func__);
 		return -EIO;
 	}
+		return 0;
+        }
+
+	/*OPPO 2014-08-25 zhzhyon Add end*/
 	pinctrl_info.cross_conn_det_sus = pinctrl_lookup_state(pinctrl,
 							"cross_conn_det_sus");
 	if (IS_ERR(pinctrl_info.cross_conn_det_sus)) {
@@ -2147,9 +2755,47 @@ static int cdc_slim_get_pinctrl(struct platform_device *pdev)
 static int msm8939_asoc_machine_probe(struct platform_device *pdev)
 {
 	struct snd_soc_card *card = &snd_soc_card_msm;
+	/*OPPO 2014-08-25 zhzhyon Add for i2s*/
+	const char *codec_type = "qcom,msm-codec-type";
+	/*OPPO 2014-08-25 zhzhyon Add end*/
 	struct msm8939_asoc_mach_data *pdata = NULL;
-	int ret;
-
+	//int ret;
+	/*OPPO 2014-08-25 zhzhyon Add for quat i2s*/
+	const char *ext_pa = "qcom,msm-ext-pa";
+	const char *ext_pa_str = NULL;
+	const char *ptr = NULL;
+	int num_strings = 0;
+	int ret, i;
+	/*OPPO 2014-08-25 zhzhyon Add end*/
+	//pr_err("zhzhyon:enter msm8939_asoc_machine_probe\n");
+	#if 0
+	/*OPPO 2014-08-27 zhzhyon Add for compatible*/
+	if(is_project(OPPO_14005))
+	{
+		version_gpio = of_get_named_gpio(pdev->dev.of_node,
+						"hardware-version-gpios", 0);
+		if (version_gpio < 0) 
+		{
+			dev_err(&pdev->dev,
+				"property %s in node %s not found %d\n",
+				"hardware-version-gpios", pdev->dev.of_node->full_name,
+				version_gpio);
+		} 
+		if (gpio_is_valid(version_gpio)) 
+		{
+			gpio_request(version_gpio,"version_gpio");
+			version_value = gpio_get_value_cansleep(version_gpio);
+			pr_err("zhzhyon:hardware-version-gpios is %d\n",version_value);
+			
+		}
+		if(!version_value)
+		{
+			pr_err("The hardware version is 14005 HW1\n");
+			return 0;
+		}
+	}
+	/*OPPO 2014-08-27 zhzhyon Add end*/
+	#endif
 	pdata = devm_kzalloc(&pdev->dev,
 			sizeof(struct msm8939_asoc_mach_data), GFP_KERNEL);
 	if (!pdata) {
@@ -2164,6 +2810,9 @@ static int msm8939_asoc_machine_probe(struct platform_device *pdev)
 
 	INIT_DELAYED_WORK(&pdata->hs_detect_dwork, hs_detect_work);
 	mutex_init(&pdata->cdc_mclk_mutex);
+	/*OPPO 2014-08-25 zhzhyon Add for quat i2s*/
+	atomic_set(&quat_mi2s_rsc_ref, 0);
+	/*OPPO 2014-08-25 zhzhyon Add end*/
 	ret = snd_soc_of_parse_card_name(card, "qcom,model");
 	if (ret) {
 		dev_err(&pdev->dev, "parse card name failed, err:%d\n",
@@ -2205,12 +2854,174 @@ static int msm8939_asoc_machine_probe(struct platform_device *pdev)
 	if (ret)
 		goto err;
 
+	/*OPPO 2014-08-25 zhzhyon Add for quat i2s*/
+	ret = of_property_read_string(pdev->dev.of_node, codec_type, &ptr);
+	if (ret) {
+		dev_err(&pdev->dev,
+			"%s: missing %s in dt node\n", __func__, codec_type);
+		goto err;
+	}
+
+	if (!strcmp(ptr, "external")) {
+		dev_info(&pdev->dev, "external codec is configured\n");
+		pdata->codec_type = 1;
+       } else {
+		pdata->codec_type = 0;
+        
+		num_strings = of_property_count_strings(pdev->dev.of_node,
+				ext_pa);
+		if (num_strings < 0) {
+			dev_err(&pdev->dev,
+					"%s: missing %s in dt node or length is incorrect\n",
+					__func__, ext_pa);
+			goto err;
+		}
+
+		for (i = 0; i < num_strings; i++) {
+			ret = of_property_read_string_index(pdev->dev.of_node,
+					ext_pa, i, &ext_pa_str);
+			if (ret) {
+				dev_err(&pdev->dev, "%s:of read string %s i %d error %d\n",
+						__func__, ext_pa, i, ret);
+				goto err;
+			}
+			if (!strcmp(ext_pa_str, "primary"))
+				pdata->ext_pa = (pdata->ext_pa | PRI_MI2S_ID);
+			else if (!strcmp(ext_pa_str, "secondary"))
+				pdata->ext_pa = (pdata->ext_pa | SEC_MI2S_ID);
+			else if (!strcmp(ext_pa_str, "tertiary"))
+				pdata->ext_pa = (pdata->ext_pa | TER_MI2S_ID);
+			else if (!strcmp(ext_pa_str, "quaternary"))
+				pdata->ext_pa = (pdata->ext_pa | QUAT_MI2S_ID);
+		}
+	}
+	pr_err("zhzhyon:pdata->ext_pa = %d\n",pdata->ext_pa);
+
+	/*OPPO 2014-08-25 zhzhyon Add end*/
+
 	/*Populate external codec TLMM configs*/
+	/*OPPO 2014-08-25 zhzhyon Modify for quat i2s*/
+	#if 0
 	ret = cdc_slim_get_pinctrl(pdev);
+	#else
+	ret = cdc_slim_get_pinctrl(pdev, pdata->ext_pa);
+	#endif
+	/*OPPO 2014-08-25 zhzhyon Modify end*/
 	if (ret < 0) {
 		pr_err("failed to get the pdm gpios\n");
 		goto err;
 	}
+	/*OPPO 2014-08-26 zhzhyon Add for reason*/
+	wcd9xxx_mbhc_cfg.ap_audio_enable_gpio = of_get_named_gpio(pdev->dev.of_node,
+					"ap-audio-en-gpios", 0);
+	if (wcd9xxx_mbhc_cfg.ap_audio_enable_gpio < 0) 
+	{
+		dev_err(&pdev->dev,
+			"property %s in node %s not found %d\n",
+			"ap-audio-en-gpios", pdev->dev.of_node->full_name,
+			wcd9xxx_mbhc_cfg.ap_audio_enable_gpio);
+	} 
+	if (gpio_is_valid(wcd9xxx_mbhc_cfg.ap_audio_enable_gpio)) 
+	{
+		gpio_request(wcd9xxx_mbhc_cfg.ap_audio_enable_gpio,"ap_audio_enable");
+		pr_err("zhzhyon:set ap audio enable\n");
+		//gpio_direction_output(wcd9xxx_mbhc_cfg->ap_audio_enable_gpio, 1);
+		ret = gpio_get_value_cansleep(wcd9xxx_mbhc_cfg.ap_audio_enable_gpio);
+		pr_err("zhzhyon:gpio ap audio enable set %d\n",ret);
+		
+	}
+	/*OPPO 2014-07-24 zhzhyon Add for tfa9890*/
+	pdata->audio_vdd_en_gpio = of_get_named_gpio(pdev->dev.of_node,
+					"audio-vdd-enable-gpios", 0);
+	if (pdata->audio_vdd_en_gpio < 0) 
+	{
+		dev_err(&pdev->dev,
+			"property %s in node %s not found %d\n",
+			"audio-vdd-enable-gpios", pdev->dev.of_node->full_name,
+			pdata->audio_vdd_en_gpio);
+	} 
+
+	pdata->tfa9890_rst = of_get_named_gpio(pdev->dev.of_node,
+					"nxp,reset-gpio", 0);
+	if (pdata->tfa9890_rst < 0) 
+	{
+		dev_err(&pdev->dev,
+			"property %s in node %s not found %d\n",
+			"nxp,reset-gpio", pdev->dev.of_node->full_name,
+			pdata->tfa9890_rst);
+	} 
+
+
+	pdata->spk_rec_sw = of_get_named_gpio(pdev->dev.of_node,
+					"spk-rec-sw-gpios", 0);
+	if (pdata->spk_rec_sw < 0) 
+	{
+		dev_err(&pdev->dev,
+			"property %s in node %s not found %d\n",
+			"spk-rec-sw-gpios", pdev->dev.of_node->full_name,
+			pdata->spk_rec_sw);
+	} 
+
+	if (gpio_is_valid(pdata->audio_vdd_en_gpio)) 
+	{
+		gpio_request(pdata->audio_vdd_en_gpio,"audio_vdd_en");
+		gpio_direction_output(pdata->audio_vdd_en_gpio, 1);
+	}
+	if (gpio_is_valid(pdata->tfa9890_rst)) 
+	{
+		gpio_request(pdata->tfa9890_rst,"tfa9890_rst");
+		gpio_direction_output(pdata->tfa9890_rst, 0);
+	}
+
+	if (gpio_is_valid(pdata->spk_rec_sw)) 
+	{
+		gpio_request(pdata->spk_rec_sw,"spk_rec_sw");
+		gpio_direction_output(pdata->spk_rec_sw, 0);
+	}
+	/*OPPO 2014-07-24 zhzhyon Add end*/
+
+	/*OPPO 2014-09-18 zhzhyon Add for DVT*/
+	if(tfa9890_vdd == NULL)
+	{
+		tfa9890_vdd = regulator_get(&pdev->dev, "tfa9890_vdd");
+		if(tfa9890_vdd)
+		{
+			if( regulator_count_voltages(tfa9890_vdd) > 0)
+			{
+				regulator_set_voltage(tfa9890_vdd, 1800000, 1800000);
+			}
+
+			ret = regulator_enable(tfa9890_vdd);
+			if(ret)
+			{
+				dev_err(&pdev->dev,
+					"Regulator vdd enable failed ret=%d\n", ret);
+				regulator_disable(tfa9890_vdd);		
+				tfa9890_vdd = NULL;
+
+			}
+		}
+	}
+	/*OPPO 2014-09-18 zhzhyon Add end*/
+
+	/*OPPO 2014-08-26 zhzhyon Add for headset detect*/
+	if(hs_det_comp == NULL)
+	{
+		hs_det_comp = regulator_get(&pdev->dev, "hs_det_compare");
+		pr_err("zhzhyon:test pdata->hs_det_comp = %p\n",hs_det_comp);
+		if(IS_ERR(hs_det_comp))
+		{
+			pr_err("zhzhyon:error!!!!!!!!!!\n");
+		}
+		ret = regulator_enable(hs_det_comp);
+		if(ret)
+		{
+			pr_err("Regulator hs_det_comp enable failed rc=%d\n", ret);
+			regulator_disable(hs_det_comp);
+		}
+	}
+	/*OPPO 2014-08-26 zhzhyon Add end*/
+
 	ret = snd_soc_register_card(card);
 	if (ret) {
 		dev_err(&pdev->dev, "snd_soc_register_card failed (%d)\n",

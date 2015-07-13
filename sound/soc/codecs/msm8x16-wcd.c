@@ -72,6 +72,15 @@
 #define EAR_PA_DISABLE (0x01 << 3)
 #define SPKR_PA_DISABLE (0x01 << 4)
 
+#ifdef VENDOR_EDIT //Jianfeng.Qiu@Multimedia, 2014/10/28, Add for boost voltage
+#define DEFAULT_BOOST_VOLTAGE 5000
+#define MIN_BOOST_VOLTAGE 4000
+#define MAX_BOOST_VOLTAGE 5550
+#define BOOST_VOLTAGE_STEP 50
+#define VOLTAGE_CONVERTER(value, min_value, step_size)\
+	((value - min_value)/step_size);
+#endif /* VENDOR_EDIT */
+
 enum {
 	AIF1_PB = 0,
 	AIF1_CAP,
@@ -167,6 +176,9 @@ static struct msm8x16_wcd_pdata *msm8x16_wcd_populate_dt_pdata(
 static int msm8x16_wcd_enable_ext_mb_source(struct snd_soc_codec *codec,
 					    bool turn_on);
 static void msm8x16_trim_btn_reg(struct snd_soc_codec *codec);
+#ifdef VENDOR_EDIT //Jianfeng.Qiu@Multimedia, 2014/10/28, Add for boost voltage
+static void msm8x16_wcd_set_boost_v(struct snd_soc_codec *codec);
+#endif /* VENDOR_EDIT */
 
 struct msm8x16_wcd_spmi msm8x16_wcd_modules[MAX_MSM8X16_WCD_DEVICE];
 
@@ -539,6 +551,36 @@ static int msm8x16_wcd_dt_parse_vreg_info(struct device *dev,
 		 vreg->min_uv, vreg->max_uv, vreg->optimum_ua, vreg->ondemand);
 	return 0;
 }
+
+#ifdef VENDOR_EDIT //Jianfeng.Qiu@Multimedia, 2014/10/28, Add for boost voltage
+static void msm8x16_wcd_dt_parse_boost_info(struct snd_soc_codec *codec)
+{
+	struct msm8x16_wcd_priv *msm8x16_wcd_priv =
+		snd_soc_codec_get_drvdata(codec);
+	const char *prop_name = "qcom,cdc-boost-voltage";
+	int boost_voltage, ret;
+
+	ret = of_property_read_u32(codec->dev->of_node, prop_name,
+			&boost_voltage);
+	if (ret) {
+		dev_dbg(codec->dev, "Looking up %s property in node %s failed\n",
+			prop_name, codec->dev->of_node->full_name);
+		boost_voltage = DEFAULT_BOOST_VOLTAGE;
+	}
+	if (boost_voltage < MIN_BOOST_VOLTAGE ||
+			boost_voltage > MAX_BOOST_VOLTAGE) {
+		dev_err(codec->dev,
+				"Incorrect boost voltage. Reverting to default\n");
+		boost_voltage = DEFAULT_BOOST_VOLTAGE;
+	}
+
+	msm8x16_wcd_priv->boost_voltage =
+		VOLTAGE_CONVERTER(boost_voltage, MIN_BOOST_VOLTAGE,
+				BOOST_VOLTAGE_STEP);
+	dev_dbg(codec->dev, "Boost voltage value is: %d\n",
+			boost_voltage);
+}
+#endif /* VENDOR_EDIT */
 
 static struct msm8x16_wcd_pdata *msm8x16_wcd_populate_dt_pdata(
 						struct device *dev)
@@ -1850,11 +1892,23 @@ static int msm8x16_wcd_codec_enable_dmic(struct snd_soc_dapm_widget *w,
 		if (*dmic_clk_cnt == 1) {
 			snd_soc_update_bits(codec, dmic_clk_reg,
 					0x0E, 0x02);
+/*OPPO 2014-08-04 zhzhyon Delete for reason*/
+#ifndef VENDOR_EDIT
 			snd_soc_update_bits(codec,
 			MSM8X16_WCD_A_CDC_TX1_DMIC_CTL,	0x07, 0x01);
+#endif
+/*OPPO 2014-08-04 zhzhyon Delete end*/
 			snd_soc_update_bits(codec, dmic_clk_reg,
 					dmic_clk_en, dmic_clk_en);
 		}
+#ifdef VENDOR_EDIT
+		/*OPPO 2014-08-04 zhzhyon Add for reason*/
+		if (dmic == 1)		
+			snd_soc_update_bits(codec,MSM8X16_WCD_A_CDC_TX1_DMIC_CTL,0x07, 0x01);		
+		if (dmic == 2)			
+			snd_soc_update_bits(codec,MSM8X16_WCD_A_CDC_TX2_DMIC_CTL,0x07, 0x01);
+		/*OPPO 2014-08-04 zhzhyon Add end*/
+#endif
 		break;
 	case SND_SOC_DAPM_POST_PMD:
 		(*dmic_clk_cnt)--;
@@ -3259,6 +3313,10 @@ static int msm8x16_wcd_device_up(struct snd_soc_codec *codec)
 	msm8x16_wcd_codec_init_reg(codec);
 	msm8x16_wcd_update_reg_defaults(codec);
 
+#ifdef VENDOR_EDIT //Jianfeng.Qiu@Multimedia, 2014/10/28, Add for boost voltage
+	msm8x16_wcd_set_boost_v(codec);
+#endif /* VENDOR_EDIT */
+
 	wcd_mbhc_stop(&msm8x16_wcd_priv->mbhc);
 	wcd_mbhc_start(&msm8x16_wcd_priv->mbhc,
 			msm8x16_wcd_priv->mbhc.mbhc_cfg);
@@ -3332,6 +3390,17 @@ void msm8x16_wcd_hs_detect_exit(struct snd_soc_codec *codec)
 }
 EXPORT_SYMBOL(msm8x16_wcd_hs_detect_exit);
 
+#ifdef VENDOR_EDIT //Jianfeng.Qiu@Multimedia, 2014/10/28, Add for boost voltage
+static void msm8x16_wcd_set_boost_v(struct snd_soc_codec *codec)
+{
+	struct msm8x16_wcd_priv *msm8x16_wcd_priv =
+				snd_soc_codec_get_drvdata(codec);
+
+	snd_soc_update_bits(codec, MSM8X16_WCD_A_ANALOG_OUTPUT_VOLTAGE,
+			0x1F, msm8x16_wcd_priv->boost_voltage);
+}
+#endif /* VENDOR_EDIT */
+
 static int msm8x16_wcd_codec_probe(struct snd_soc_codec *codec)
 {
 	struct msm8x16_wcd_priv *msm8x16_wcd_priv;
@@ -3370,6 +3439,11 @@ static int msm8x16_wcd_codec_probe(struct snd_soc_codec *codec)
 					MSM8X16_WCD_A_DIGITAL_REVISION1);
 	dev_dbg(codec->dev, "%s :PMIC REV: %d", __func__,
 					msm8x16_wcd_priv->pmic_rev);
+#ifdef VENDOR_EDIT //Jianfeng.Qiu@Multimedia, 2014/10/28, Add for boost voltage
+	msm8x16_wcd_dt_parse_boost_info(codec);
+	msm8x16_wcd_set_boost_v(codec);
+#endif /* VENDOR_EDIT */
+
 	msm8x16_wcd_bringup(codec);
 	msm8x16_wcd_codec_init_reg(codec);
 	msm8x16_wcd_update_reg_defaults(codec);

@@ -49,6 +49,9 @@
 #include <linux/msm_iommu_domains.h>
 #include <mach/memory.h>
 #include <mach/msm_memtypes.h>
+#ifdef VENDOR_EDIT/* Xiaori.yuan@PhoneSW.Multimedia, 2014/10/15  Add for erase Powerd by android */
+#include <mach/oppo_project.h>
+#endif /*CONFIG_VENDOR_EDIT*/
 
 #include "mdss.h"
 #include "mdss_fb.h"
@@ -1607,7 +1610,18 @@ probe_done:
 		mutex_destroy(&mdata->reg_lock);
 		mdss_res = NULL;
 	}
-
+#ifdef VENDOR_EDIT/* Xiaori.yuan@PhoneSW.Multimedia, 2014/10/15  Add for erase Powerd by android */
+#ifndef OPPO_CMCC_TEST
+	pr_err("erase Powerd by android\n");
+	if(is_project(OPPO_14005)){
+		memset(phys_to_virt(0x83200000 + 1520*1080*3), 0x00, 400*1080*3);
+		writel_relaxed(1, (char *)0xf070201c);
+	}
+	if(is_project(OPPO_14045) || is_project(OPPO_14051)){
+		memset(phys_to_virt(0x83200000 + 1080*720*3), 0x00, 200*720*3);
+	}
+#endif
+#endif /*CONFIG_VENDOR_EDIT*/
 	return rc;
 }
 

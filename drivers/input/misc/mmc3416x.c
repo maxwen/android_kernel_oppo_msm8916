@@ -1,3 +1,15 @@
+/*************************************************************
+ ** Copyright (C), 2008-2012, OPPO Mobile Comm Corp., Ltd 
+ ** VENDOR_EDIT
+ ** File        : mmc3416x.c
+ ** Description : 
+ ** Date        : 2014-07-30 21:25
+ ** Author      : BSP.Sensor
+ ** 
+ ** ------------------ Revision History: ---------------------
+ **      <author>        <date>          <desc>
+ *************************************************************/
+
 /*
  * Copyright (c) 2014, Linux Foundation. All rights reserved.
  * Linux Foundation chooses to take subject only to the GPLv2 license
@@ -39,8 +51,20 @@
 #include <linux/regmap.h>
 #include <linux/sensors.h>
 #include <asm/uaccess.h>
-
+#include <linux/gpio.h>
+#include <linux/of_gpio.h>
 #include "mmc3416x.h"
+#include <linux/sensors_ftm.h>
+
+#include <mach/oppo_project.h>
+
+//#ifdef VENDOR_EDIT /* LiuPing@Phone.BSP.Sensor, 2014/07/30, add for add sys */
+#define MMC3416X_ATTR_FILES
+//#endif /*VENDOR_EDIT*/
+
+#ifdef VENDOR_EDIT /* LiuPing@Phone.BSP.Sensor, 2014/07/31, add for global point to mmc3416x_data */
+static struct mmc3416x_data *g_memsic = NULL; 
+#endif /*VENDOR_EDIT*/
 
 #define MMC3416X_DELAY_TM_MS	10
 
@@ -102,6 +126,9 @@ struct mmc3416x_vec {
 struct mmc3416x_data {
 	struct mutex		ecompass_lock;
 	struct mutex		ops_lock;
+    #ifdef MMC3416X_ATTR_FILES
+    	struct mutex io_lock;
+    #endif
 	struct delayed_work	dwork;
 	struct sensors_classdev	cdev;
 	struct mmc3416x_vec	last;
@@ -498,7 +525,17 @@ static int mmc3416x_parse_dt(struct i2c_client *client,
 	const char *tmp;
 	int rc;
 	int i;
-
+    /* LiuPing@Phone.BSP.Sensor, 2014/09/18, add for set gpio to control ex-ldo for vdd supply in 14005. */
+	{
+		int vdd_gpio = 0;
+		vdd_gpio = of_get_named_gpio(np, "sensor,vdd-gpio", 0);
+		if (gpio_is_valid(vdd_gpio)) 
+		{
+			printk("%s set gpio:%d to high for vdd supply. \n", __func__, vdd_gpio);
+			gpio_request(vdd_gpio,"vdd-gpio");
+			gpio_direction_output(vdd_gpio, 1);
+		}
+	}
 	rc = of_property_read_string(np, "memsic,dir", &tmp);
 
 	/* does not have a value or the string is not null-terminated */
@@ -597,6 +634,226 @@ static struct regmap_config mmc3416x_regmap_config = {
 	.val_bits = 8,
 };
 
+#ifdef MMC3416X_ATTR_FILES
+static int mmc3416x_ft_test(struct mmc3416x_data *memsic)
+{
+    int rc;
+    uint8_t result = 0;
+    struct mmc3416x_vec prev_vec, curr_vec;
+
+    printk("in M34160PJ-attrib_test");
+
+    rc = regmap_write(memsic->regmap, MMC3416X_REG_CTRL, MMC3416X_CTRL_RESET);
+    if (rc) {
+    	dev_err(&memsic->i2c->dev, "write reg %d failed.(%d)\n",
+    			MMC3416X_REG_CTRL, rc);
+    	return 0;
+    }
+    printk("in M34160PJ-test bef delay");
+    /* waiting 50 ms after set*/
+    msleep(50);
+
+    rc = regmap_write(memsic->regmap, MMC3416X_REG_CTRL, MMC3416X_CTRL_TM);
+    if (rc) {
+    	dev_err(&memsic->i2c->dev, "write reg %d failed.(%d)\n",
+    			MMC3416X_REG_CTRL, rc);
+    	return 0;
+    }
+    
+    printk("in M34160PJ-attrib_test2");
+    /* waiting 10 ms after take measurement command */
+    msleep(10);
+
+    /* Read the data, no temperature data read */
+    rc = mmc3416x_read_xyz(memsic, &prev_vec);
+    if (rc) {
+        dev_warn(&memsic->i2c->dev, "read xyz failed\n");
+        return 0;
+    }
+
+    rc = regmap_write(memsic->regmap, MMC3416X_REG_CTRL, MMC3416X_CTRL_SET);
+    if (rc) {
+    	dev_err(&memsic->i2c->dev, "write reg %d failed.(%d)\n",
+    			MMC3416X_REG_CTRL, rc);
+    	return 0;
+    }
+
+    /* waiting 50 ms after reset*/
+    msleep(50);
+    rc = regmap_write(memsic->regmap, MMC3416X_REG_CTRL, MMC3416X_CTRL_TM);
+    if (rc) {
+    	dev_err(&memsic->i2c->dev, "write reg %d failed.(%d)\n",
+    			MMC3416X_REG_CTRL, rc);
+    	return 0;
+    }
+
+    /* waiting 10 ms after take measurement command */
+    msleep(10);
+
+    /* Read the data, no temperature data read */
+    rc = mmc3416x_read_xyz(memsic, &curr_vec);
+    if (rc) {
+        dev_warn(&memsic->i2c->dev, "read xyz failed\n");
+        return 0;
+    }
+
+    printk("%s curr data  x:%d  y:%d  z:%d \n", __func__, curr_vec.x, curr_vec.y, curr_vec.z);
+    printk("%s prev data  x:%d  y:%d  z:%d \n", __func__, prev_vec.x, prev_vec.y, prev_vec.z);
+    if ((abs(curr_vec.x-prev_vec.x) > 100) || (abs(curr_vec.y-prev_vec.y) > 100) ||
+         (abs(curr_vec.z-prev_vec.z) > 100))
+         result = 1;
+
+    printk("in M34160PJ-test counter");
+           
+    if (result)
+    {
+        printk("in M34160PJ-test counter success");
+        return 1;   // success
+    }
+    else
+    {
+        return 0;  //fail
+    }
+}
+static ssize_t mmc3416x_test_show(struct device *dev, struct device_attribute *attr, char *buf)
+{
+    int32_t  ret;
+    //struct mmc3416x_data *memsic =  dev_get_drvdata(dev);
+    
+    mutex_lock(&g_memsic->io_lock);
+    ret = mmc3416x_ft_test(g_memsic);
+    mutex_unlock(&g_memsic->io_lock);
+
+    return scnprintf(buf, PAGE_SIZE, "%d\n", ret);
+}
+
+static ssize_t mmc3416x_test_store(struct device *dev, struct device_attribute *attr, const char *buf, size_t size)
+{
+    return size;
+}
+
+static ssize_t mmc3416x_dir_show(struct device *dev, struct device_attribute *attr, char *buf)
+{
+
+    return scnprintf(buf, PAGE_SIZE, "%d\n", g_memsic->dir);
+}
+
+static ssize_t mmc3416x_dir_store(struct device *dev, struct device_attribute *attr, const char *buf, size_t size)
+{
+    unsigned long value = 0;
+    int ret;
+    ret = kstrtoul(buf, 10, &value);
+    if(ret < 0 || value >= MMC3416X_DIR_COUNT)
+    {
+    	printk(KERN_ERR "%s:kstrtoul failed, ret=0x%x\n", __func__, ret);
+    	return ret;
+    }
+    g_memsic->dir = value;
+    return size;
+}
+
+
+static struct device_attribute mmc3416x_test_attribute = __ATTR(test,0664,mmc3416x_test_show,mmc3416x_test_store);
+static struct device_attribute mmc3416x_dir_attribute = __ATTR(dir,0664,mmc3416x_dir_show,mmc3416x_dir_store);
+static struct attribute *mmc3416x_attrs [] =
+{
+    &mmc3416x_test_attribute.attr,
+    &mmc3416x_dir_attribute.attr,        
+    NULL
+};
+static struct attribute_group mmc3416x_attribute_group = {
+	.attrs = mmc3416x_attrs,
+};
+
+#endif
+/*--------------------------------------------------------------------------*/
+static ssize_t mmc3416x_geomag_enable_store(struct kobject *kobj, struct kobj_attribute *attr, const char *buf, size_t count)
+{
+	u32 enable;
+	int ret = -EINVAL;
+	struct mmc3416x_data *mag = g_memsic;
+	
+	sscanf(buf, "%x", &enable);
+	if (enable && (!mag->enable)) {
+		ret = mmc3416x_power_set(mag, true);
+		if (ret) {
+			dev_err(&mag->i2c->dev, "Power up failed\n");
+		}
+
+		/* send TM cmd before read */
+		ret = regmap_write(mag->regmap, MMC3416X_REG_CTRL,
+				MMC3416X_CTRL_TM);
+		if (ret) {
+			dev_err(&mag->i2c->dev, "write reg %d failed.(%d)\n",
+					MMC3416X_REG_CTRL, ret);
+		}
+
+	} else if ((!enable) && mag->enable) {
+
+		if (mmc3416x_power_set(mag, false))
+			dev_warn(&mag->i2c->dev, "Power off failed\n");
+	} else {
+		dev_warn(&mag->i2c->dev,
+				"ignore enable state change from %d to %d\n",
+				mag->enable, enable);
+	}
+	mag->enable = enable;
+	if (ret == 0)
+		printk("%s: Enable sensor SUCCESS\n",__func__);
+
+	return count;
+}
+static ssize_t mmc3416x_geomag_enable_show(struct kobject *kobj, struct kobj_attribute *attr, char *buf)
+{
+	struct mmc3416x_data *mag = g_memsic;
+	return snprintf(buf, PAGE_SIZE, "geomagnetic:%d\n", mag->enable);
+}
+static struct kobj_attribute enable = 
+{
+	.attr = {"enable", 0664},
+	.show = mmc3416x_geomag_enable_show,
+	.store = mmc3416x_geomag_enable_store,
+};
+static ssize_t mmc3416x_geomag_raw_show(struct kobject *kobj, struct kobj_attribute *attr, char *buf)
+{
+	struct mmc3416x_data *mag = g_memsic;
+	struct mmc3416x_vec xyz;
+	int ret;
+	
+	ret = mmc3416x_read_xyz(mag, &xyz);
+
+	return snprintf(buf, PAGE_SIZE, "%d %d %d\n", xyz.x, xyz.y, xyz.z);
+}
+static struct kobj_attribute mag_raw = 
+{
+	.attr = {"mag_raw", 0444},
+	.show = mmc3416x_geomag_raw_show,
+};
+
+static ssize_t mmc3416x_selftest_show(struct kobject *kobj, struct kobj_attribute *attr, char *buf)
+{
+	int32_t  ret = mmc3416x_ft_test(g_memsic);
+
+	return snprintf(buf, PAGE_SIZE, "%d\n", ret);
+}
+static struct kobj_attribute test = 
+{
+	.attr = {"test", 0444},
+	.show = mmc3416x_selftest_show,
+};
+
+
+
+static const struct attribute *mmc3416x_ftm_attrs[] = 
+{
+	&enable.attr,
+	&mag_raw.attr,
+	&test.attr,
+	NULL
+};
+
+static struct dev_ftm mmc3416x_ftm;
+/*--------------------------------------------------------------------------*/
 static int mmc3416x_probe(struct i2c_client *client, const struct i2c_device_id *id)
 {
 	int res = 0;
@@ -636,6 +893,10 @@ static int mmc3416x_probe(struct i2c_client *client, const struct i2c_device_id 
 	mutex_init(&memsic->ecompass_lock);
 	mutex_init(&memsic->ops_lock);
 
+#ifdef MMC3416X_ATTR_FILES
+    	mutex_init(&memsic->io_lock);
+#endif
+
 	memsic->regmap = devm_regmap_init_i2c(client, &mmc3416x_regmap_config);
 	if (IS_ERR(memsic->regmap)) {
 		dev_err(&client->dev, "Init regmap failed.(%ld)",
@@ -663,6 +924,15 @@ static int mmc3416x_probe(struct i2c_client *client, const struct i2c_device_id 
 		goto out_init_input;
 	}
 
+#ifdef MMC3416X_ATTR_FILES
+	res = sysfs_create_group(&memsic->idev->dev.kobj, &mmc3416x_attribute_group);
+	if (res < 0)
+	{
+		printk(KERN_ERR "%s:could not create sysfs group for mmc3416\n", __func__);
+		goto err_sysfs_create_group;
+	}
+#endif
+
 	if (memsic->auto_report) {
 		dev_info(&client->dev, "auto report is enabled\n");
 		INIT_DELAYED_WORK(&memsic->dwork, mmc3416x_poll);
@@ -677,25 +947,45 @@ static int mmc3416x_probe(struct i2c_client *client, const struct i2c_device_id 
 		goto out_register_classdev;
 	}
 
-	res = mmc3416x_power_set(memsic, false);
-	if (res) {
-		dev_err(&client->dev, "Power off failed\n");
-		goto out_power_set;
-	}
+       /* LiuPing@Phone.BSP.Sensor, 2014/09/28. If the vdd-LDO11 disable , then enable it will fail . so always open power in 14005. */
+       if (!is_project(OPPO_14005))
+       {
+        	res = mmc3416x_power_set(memsic, false);
+        	if (res) {
+        		dev_err(&client->dev, "Power off failed\n");
+        		goto out_power_set;
+        	}
+       }
 
 	memsic->poll_interval = MMC3416X_DEFAULT_INTERVAL_MS;
 
-	dev_info(&client->dev, "mmc3416x successfully probed\n");
+#ifdef VENDOR_EDIT /* LiuPing@Phone.BSP.Sensor, 2014/07/31, add for global point to mmc3416x_data. */
+       g_memsic = memsic;
+#endif /*VENDOR_EDIT*/
 
+	dev_info(&client->dev, "mmc3416x successfully probed\n");
+	mmc3416x_ftm.name = "geomagnetic";
+	mmc3416x_ftm.i2c_client = memsic->i2c;
+	mmc3416x_ftm.priv_data = memsic;
+	mmc3416x_ftm.attrs = mmc3416x_ftm_attrs;
+	register_single_dev_ftm(&mmc3416x_ftm);
 	return 0;
 
 out_power_set:
 	sensors_classdev_unregister(&memsic->cdev);
+#ifdef MMC3416X_ATTR_FILES    
+err_sysfs_create_group:
+	sysfs_remove_group(&memsic->idev->dev.kobj, &mmc3416x_attribute_group);    
+#endif
 out_register_classdev:
 	input_unregister_device(memsic->idev);
 out_init_input:
 out_check_device:
-	mmc3416x_power_deinit(memsic);
+       /* LiuPing@Phone.BSP.Sensor, 2014/09/28. If the vdd-LDO11 disable , then enable it will fail . so always open power in 14005. */
+       if (!is_project(OPPO_14005))
+       {
+	    mmc3416x_power_deinit(memsic);
+       }
 out:
 	return res;
 }

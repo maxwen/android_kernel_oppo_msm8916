@@ -20,6 +20,10 @@
 #include <linux/seq_file.h>
 #include <linux/memblock.h>
 
+#ifdef VENDOR_EDIT//Modified by tong.han@Bsp.group for 1.5G DDR bring up. 2014-11-06
+#include <mach/oppo_project.h>
+#endif/*VENDOR_EDIT*/
+
 static struct memblock_region memblock_memory_init_regions[INIT_MEMBLOCK_REGIONS] __initdata_memblock;
 static struct memblock_region memblock_reserved_init_regions[INIT_MEMBLOCK_REGIONS] __initdata_memblock;
 
@@ -118,6 +122,15 @@ phys_addr_t __init_memblock memblock_find_in_range_node(phys_addr_t start,
 			continue;
 
 		cand = round_down(this_end - size, align);
+		
+#ifdef VENDOR_EDIT//Modified by tong.han@Bsp.group for 1.5G DDR bring up. 2014-11-06
+		if(is_project(OPPO_14051))
+		{
+			if (cand < memblock.current_limit && this_end >= memblock.current_limit)
+				cand = round_down(memblock.current_limit - size, align);      
+		}		
+#endif/*VENDOR_EDIT*/
+
 		if (cand >= this_start)
 			return cand;
 	}
