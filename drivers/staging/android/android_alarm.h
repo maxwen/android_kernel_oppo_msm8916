@@ -28,7 +28,7 @@ enum android_alarm_type {
 	ANDROID_ALARM_ELAPSED_REALTIME,
 	ANDROID_ALARM_RTC_POWEROFF_WAKEUP,
 /* OPPO 2014-07-31 wenxian.zhen add begin for power up alarm */
-#ifdef VENDOR_EDIT
+#ifdef CONFIG_VENDOR_EDIT
 	ANDROID_ALARM_RTC_POWERUP,
 #endif
 /* OPPO 2014-07-31 wenxian.zhen add end for power up alarm */
@@ -50,7 +50,7 @@ enum android_alarm_return_flags {
 	ANDROID_ALARM_RTC_POWEROFF_WAKEUP_MASK =
 				1U << ANDROID_ALARM_RTC_POWEROFF_WAKEUP,
 /* OPPO 2014-07-31 wenxian.zhen add begin for power up alarm */
-#ifdef VENDOR_EDIT
+#ifdef CONFIG_VENDOR_EDIT
 	ANDROID_ALARM_RTC_POWERUP_MASK = 1U << ANDROID_ALARM_RTC_POWERUP,
 #endif
 /* OPPO 2014-07-31 wenxian.zhen add end for power up alarm */

@@ -23,7 +23,7 @@ obj-$(CONFIG_INPUT_JOYSTICK)	+= joystick/
 obj-$(CONFIG_INPUT_TABLET)	+= tablet/
 #obj-$(CONFIG_INPUT_TOUCHSCREEN)	+= touchscreen/
 obj-$(CONFIG_INPUT_MISC)	+= misc/
-# ifdef VENDOR_EDIT 
+# ifdef CONFIG_VENDOR_EDIT 
 #chenggang.li@BSP.TP modified for oppo 2014-07-09
 obj-$(CONFIG_INPUT_OPPO)	+= oppo/
 # endif

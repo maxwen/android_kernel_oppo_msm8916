@@ -50,11 +50,11 @@
 
 #include "queue.h"
 
-#ifdef VENDOR_EDIT
+#ifdef CONFIG_VENDOR_EDIT
 //Zhilong.Zhang@OnlineRd.Driver, 2013/10/24, Add for eMMC and DDR device information
 #include <mach/device_info.h>
 #include <mach/oppo_project.h>
-#endif /* VENDOR_EDIT */
+#endif /* CONFIG_VENDOR_EDIT */
 
 
 MODULE_ALIAS("mmc:block");
@@ -3273,7 +3273,7 @@ static int mmc_blk_probe(struct mmc_card *card)
 {
 	struct mmc_blk_data *md, *part_md;
 	char cap_str[10];
-	#ifdef VENDOR_EDIT
+	#ifdef CONFIG_VENDOR_EDIT
 	//Zhilong.Zhang@OnlineRd.Driver, 2013/10/24, Add for eMMC and DDR device information
 	char * manufacturerid;
     static char temp_version[10];
@@ -3285,7 +3285,7 @@ static int mmc_blk_probe(struct mmc_card *card)
 		.version = "K3QF7F70DM",
 		.manufacture = "SAMSUNG",
 	};*/
-	#endif /* VENDOR_EDIT */
+	#endif /* CONFIG_VENDOR_EDIT */
 
 	/*
 	 * Check that the card supports the command class(es) we need.
@@ -3293,7 +3293,7 @@ static int mmc_blk_probe(struct mmc_card *card)
 	if (!(card->csd.cmdclass & CCC_BLOCK_READ))
 		return -ENODEV;
 
-	#ifdef VENDOR_EDIT
+	#ifdef CONFIG_VENDOR_EDIT
 //Zhilong.Zhang@OnlineRd.Driver, 2013/10/24, Add for eMMC and DDR device information
 	switch (card->cid.manfid) {
 		case  0x11:
@@ -3321,7 +3321,7 @@ static int mmc_blk_probe(struct mmc_card *card)
 		//else
 		//	register_device_proc("ddr", ddr_info_2.version, ddr_info_2.manufacture);
 	}
-#endif /* VENDOR_EDIT */
+#endif /* CONFIG_VENDOR_EDIT */
 
 	md = mmc_blk_alloc(card);
 	if (IS_ERR(md))

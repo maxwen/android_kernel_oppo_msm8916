@@ -47,10 +47,10 @@
 	
 	/*nanwei.Deng@bsp.drv add for charger start*/
 	i2c@78b8000 { /* BLSP1 QUP4 =i2c4*/
-                //#ifdef VENDOR_EDIT
+                //#ifdef CONFIG_VENDOR_EDIT
                 /*chaoying.chen@EXP.BaseDrv.otg,2014/10/09  Modified for 14061 otg */
 		bq24196_otg_supply: bq24196_charger@6b {
-		//#endif /*VENDOR_EDIT*
+		//#endif /*CONFIG_VENDOR_EDIT*
 			status = "okay";
 			compatible = "ti,bq24196-charger";
 			reg = <0x6b>;
@@ -94,11 +94,11 @@
 			qcom,temp_cool_fastchg_current_ma = <200>;				/* cool battery temperature fast current   =0.25A(-10~0)*/
 			
 			qcom,bat_present_decidegc = <200>;						/* battery decidegc temperature in decidegC= -20*/
-			//#ifdef VENDOR_EDIT
+			//#ifdef CONFIG_VENDOR_EDIT
                          /*chaoying.chen@EXP.BaseDrv.otg,2014/10/09  Modified for 14061 otg */
 			//regulator-name = "boost_for_otg";
 			regulator-name = "bq24196_otg_vreg";
-			//#endif /*VENDOR_EDIT*/								/* A string used as a descriptive name for the batfet regulator.*/
+			//#endif /*CONFIG_VENDOR_EDIT*/								/* A string used as a descriptive name for the batfet regulator.*/
 		}; 		
 	};
 	i2c@78b5000 { /* BLSP1 QUP1 */
@@ -194,7 +194,7 @@
 		};
 
 		/*
-		//#ifdef VENDOR_EDIT  
+		//#ifdef CONFIG_VENDOR_EDIT  
    		//deleted by dengnw@BSP.group (conflict with fast_charger data) 2014-8-29  
 		camera_snapshot {
 			label = "camera_snapshot";
@@ -494,7 +494,7 @@
 		qcom,hw-settle-time = <2>;
 		qcom,fast-avg-setup = <0>;
 	};
- //#ifdef VENDOR_EDIT
+ //#ifdef CONFIG_VENDOR_EDIT
   /*chaoying.chen@EXP.BaseDrv.otg,2014/10/09  Added for otg */
 	chan@11 { //MPP2 1:1
 	label = "mpp2_div1";
@@ -506,7 +506,7 @@
 	qcom,hw-settle-time = <2>;
 	qcom,fast-avg-setup = <0>;
 	};
-// #endif /* VENDOR_EDIT */
+// #endif /* CONFIG_VENDOR_EDIT */
 };
 /*dengnw  add for  adc 2014-07-22 end*/
 
@@ -534,7 +534,7 @@
 			qcom,vib-vtg-level-mV = <3100>;
 		};
 	};
-//#ifdef VENDOR_EDIT
+//#ifdef CONFIG_VENDOR_EDIT
 /*chaoying.chen@EXP.BaseDrv.otg,2014/10/09  Modified for 14061 otg */
 /*
 	qcom,pm8916@0 {
@@ -555,7 +555,7 @@
 		};
 	};
 */
-//#endif /*VENDOR_EDIT*/
+//#endif /*CONFIG_VENDOR_EDIT*/
 };
 
 &sdhc_1 {
@@ -688,7 +688,7 @@
 
 &pmx_mdss {
 	qcom,num-grp-pins = <1>;
-	/*#ifdef VENDOR_EDIT yxr delete*/
+	/*#ifdef CONFIG_VENDOR_EDIT yxr delete*/
 	/*qcom,pins = <&gp 97>, <&gp 25>, <&gp 98>;*/
 	qcom,pins = <&gp 25>;
 };
@@ -697,7 +697,7 @@
 	qcom,num-grp-pins = <1>;
 	qcom,pins = <&gp 24>;
 };
-/*#ifdef VENDOR_EDIT Xiaori.Yuan modified for samsung oled*/
+/*#ifdef CONFIG_VENDOR_EDIT Xiaori.Yuan modified for samsung oled*/
 #include "dsi-panel-samsung_ams520bq04_s6e3fa2x01_1080p_cmd.dtsi"
 &mdss_dsi0 {
 	pinctrl-names = "mdss_default", "mdss_sleep";
@@ -719,7 +719,7 @@
 	/*qcom,platform-te-gpio = <&msm_gpio 24 0>;
 	qcom,platform-bklight-en-gpio = <&msm_gpio 98 0>;*/
 };
-/*#ifdef VENDOR_EDIT Xiaori.Yuan modified end*/
+/*#ifdef CONFIG_VENDOR_EDIT Xiaori.Yuan modified end*/
 
 &dsi_dual_sharp_video_0 {
         qcom,mdss-dsi-bl-pmic-control-type = "bl_ctrl_pwm";
@@ -741,13 +741,13 @@
 		status = "disabled";
 	};
 
- //#ifndef VENDOR_EDIT
+ //#ifndef CONFIG_VENDOR_EDIT
  /*chaoying.chen@EXP.BaseDrv.otg,2014/09/29  Modified for otg */
  //	mpp@a100 { /* MPP 2 */
  //			/* HR LED */
  //				status = "disabled";
  //			};
- //#else /*VENDOR_EDIT*/
+ //#else /*CONFIG_VENDOR_EDIT*/
 	mpp@a100 { //MPP2
 		status = "ok";
 		qcom,mode = <4>; // AIN input
@@ -757,7 +757,7 @@
 		qcom,ain-route = <1>; // QPNP_PIN_AIN_AMUX_CH6 = 1 for MPP2
 		qcom,master-en = <1>; // Function constant
 	};
- //#endif /*VENDOR_EDIT*/
+ //#endif /*CONFIG_VENDOR_EDIT*/
 
 	mpp@a200 { /* MPP 3 */
 		/* VREF DAC */
@@ -799,7 +799,7 @@
 		qcom,src-sel = <2>; /* QPNP_PIN_SEL_FUNC_1 */
 		qcom,master-en = <1>;
 	};
-	/*#ifdef VENDOR_EDIT Xiaori.Yuan modified for lcd*/
+	/*#ifdef CONFIG_VENDOR_EDIT Xiaori.Yuan modified for lcd*/
 	gpio@c200 { /* GPIO 3 */
 		/* External regulator control for WTR */
 		/*status = "disabled";*/
@@ -845,11 +845,11 @@
 		qcom,cpr-up-threshold = <0>;
 		qcom,cpr-down-threshold = <8>;
 };
-//#ifdef VENDOR_EDIT
+//#ifdef CONFIG_VENDOR_EDIT
 /*chaoying.chen@EXP.BaseDrv.otg,2014/10/13  Added for 14061 otg */
 &usb_otg {
     //qcom,hsusb-otg-mode = <3>;
     oppo-otg-supply = <&pm8916_l15>;
     vbus_otg-supply = <&bq24196_otg_supply>;
 };
-//#endif /* VENDOR_EDIT */
+//#endif /* CONFIG_VENDOR_EDIT */

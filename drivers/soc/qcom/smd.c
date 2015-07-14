@@ -1696,7 +1696,7 @@ static int smd_packet_read(smd_channel_t *ch, void *data, int len, int user_buf)
 		if (!read_intr_blocked(ch))
 			ch->notify_other_cpu(ch);
 		
-//#ifdef VENDOR_EDIT 
+//#ifdef CONFIG_VENDOR_EDIT 
 //DuYuanhua@Modem, 2014/10/11, added for modem wake up AP issue
 	//pr_info("info: smd_packet_read: %s",ch->name);
 

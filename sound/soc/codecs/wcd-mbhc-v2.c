@@ -559,7 +559,7 @@ static void wcd_mbhc_report_plug(struct wcd_mbhc *mbhc, int insertion,
 			pr_debug("%s: button press is canceled\n", __func__);
 		} else if (mbhc->buttons_pressed) {
 			/*OPPO 2014-10-10 zhzhyon Delete for headset detect*/
-			#ifndef VENDOR_EDIT
+			#ifndef CONFIG_VENDOR_EDIT
 			pr_debug("%s: release of button press%d\n",
 				 __func__, jack_type);
 			wcd_mbhc_jack_report(mbhc, &mbhc->button_jack, 0,
@@ -670,7 +670,7 @@ static void wcd_mbhc_find_plug_and_report(struct wcd_mbhc *mbhc,
 
 	WCD_MBHC_RSC_ASSERT_LOCKED(mbhc);
 	/*OPPO 2014-09-09 zhzhyon Add for headset detect*/	
-	#ifdef VENDOR_EDIT	
+	#ifdef CONFIG_VENDOR_EDIT	
 	if(plug_type == MBHC_PLUG_TYPE_GND_MIC_SWAP)	
 	{		
 		plug_type = MBHC_PLUG_TYPE_HEADSET;	
@@ -742,7 +742,7 @@ static void wcd_mbhc_find_plug_and_report(struct wcd_mbhc *mbhc,
 	pr_debug("%s: leave\n", __func__);
 }
 /*OPPO 2014-09-10 zhzhyon Delete for headset detect*/
-#ifndef VENDOR_EDIT
+#ifndef CONFIG_VENDOR_EDIT
 /* To determine if cross connection occured */
 static bool wcd_check_cross_conn(struct wcd_mbhc *mbhc)
 {
@@ -856,7 +856,7 @@ static bool wcd_is_special_headset(struct wcd_mbhc *mbhc)
 	return ret;
 }
 /*OPPO 2014-09-10 zhzhyon Modify for headset detect*/
-#ifndef VENDOR_EDIT
+#ifndef CONFIG_VENDOR_EDIT
 static void wcd_correct_swch_plug(struct work_struct *work)
 {
 	struct wcd_mbhc *mbhc;
@@ -1150,7 +1150,7 @@ report:
 			__func__, plug_type, wrk_complete,
 			mbhc->btn_press_intr);
 	/*OPPO 2014-09-09 zhzhyon Modify for reason*/	
-	#ifdef VENDOR_EDIT	
+	#ifdef CONFIG_VENDOR_EDIT	
 	WCD_MBHC_RSC_LOCK(mbhc);	
 	wcd_mbhc_find_plug_and_report(mbhc, plug_type);	
 	WCD_MBHC_RSC_UNLOCK(mbhc);	
@@ -1166,7 +1166,7 @@ report:
 
 #endif
 /*OPPO 2014-09-10 zhzhyon Modify end*/
-#ifndef VENDOR_EDIT
+#ifndef CONFIG_VENDOR_EDIT
 /* called under codec_resource_lock acquisition */
 static void wcd_mbhc_detect_plug_type(struct wcd_mbhc *mbhc)
 {
@@ -1495,7 +1495,7 @@ static irqreturn_t wcd_mbhc_mech_plug_detect_irq(int irq, void *data)
 	struct wcd_mbhc *mbhc = data;
 	
 	/*xiang.fei@Multimedia, 2014/08/16, Add for headset*/
-	#ifdef VENDOR_EDIT
+	#ifdef CONFIG_VENDOR_EDIT
 	disable_irq_nosync(irq);
 	#endif
 	/*xiang.fei@Multimedia, 2014/08/16, Add end*/
@@ -1511,7 +1511,7 @@ static irqreturn_t wcd_mbhc_mech_plug_detect_irq(int irq, void *data)
 	}
 	
 	/*xiang.fei@Multimedia, 2014/08/16, Add for headset*/
-	#ifdef VENDOR_EDIT
+	#ifdef CONFIG_VENDOR_EDIT
 	enable_irq(irq);
 	#endif
 	/*xiang.fei@Multimedia, 2014/08/16, Add end*/
@@ -1545,7 +1545,7 @@ static int wcd_mbhc_get_button_mask(u16 btn)
 	}
 	
 	/*xiang.fei@Multimedia, 2014/09/01, Add for headset*/
-	#ifdef VENDOR_EDIT
+	#ifdef CONFIG_VENDOR_EDIT
 	mask = SND_JACK_BTN_0;
 	#endif
 	/*xiang.fei@Multimedia, 2014/09/01, Add end*/
@@ -1564,7 +1564,7 @@ static irqreturn_t wcd_mbhc_hs_ins_irq(int irq, void *data)
 
 	pr_debug("%s: enter\n", __func__);
 
-#ifdef VENDOR_EDIT
+#ifdef CONFIG_VENDOR_EDIT
 	/*OPPO 2014-08-04 zhzhyon Delete headset detect*/
 	return 0;
 	/*OPPO 2014-08-04 zhzhyon Detele end*/

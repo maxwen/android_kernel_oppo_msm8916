@@ -44,12 +44,12 @@
 
 #define MAX_BUFFER_SIZE	512
 
-//#ifdef VENDOR_EDIT
+//#ifdef CONFIG_VENDOR_EDIT
 //jiaoyifei@Connectivity.NFC, 2014/11/05, add for cts test
 #if 0
 #define PN547_DEBUG
 #endif
-//#endif /* VENDOR_EDIT */
+//#endif /* CONFIG_VENDOR_EDIT */
 
 #define  PN547_NAME  "pn544"
 
@@ -336,24 +336,24 @@ static int pn547_dev_open(struct inode *inode, struct file *filp)
 static long pn547_dev_ioctl(struct file *filp, unsigned int cmd, unsigned long arg)
 {
 	struct pn547_dev *pn547_dev = filp->private_data;
-//#ifdef VENDOR_EDIT
+//#ifdef CONFIG_VENDOR_EDIT
 //jiaoyifei@Connectivity.NFC, 2014/11/10, add for sim-swp will be detect when standby
 	int ret = 0;
-//#endif /* VENDOR_EDIT */
+//#endif /* CONFIG_VENDOR_EDIT */
 	switch (cmd) {
 	case PN547_SET_PWR:
 		if (arg == 2) {
 			/* power on with firmware download (requires hw reset)
 			 */
 			printk("%s power on with firmware\n", __func__);
-//#ifdef VENDOR_EDIT
+//#ifdef CONFIG_VENDOR_EDIT
 //jiaoyifei@Connectivity.NFC, 2014/11/10, add for sim-swp will be detect when standby
 			ret = disable_irq_wake(pn547_dev->client->irq);
 			if(ret < 0)
 				{
 					printk("%s,power on with firmware disable_irq_wake %d\n",__func__,ret);
 				}	
-//#endif /* VENDOR_EDIT */			
+//#endif /* CONFIG_VENDOR_EDIT */			
 			gpio_set_value(pn547_dev->ven_gpio, 1);
 			gpio_set_value(pn547_dev->firm_gpio, 1);
 			msleep(10);
@@ -363,28 +363,28 @@ static long pn547_dev_ioctl(struct file *filp, unsigned int cmd, unsigned long a
 			msleep(10);
 		} else if (arg == 1) {
 			/* power on */
-//#ifdef VENDOR_EDIT
+//#ifdef CONFIG_VENDOR_EDIT
 //jiaoyifei@Connectivity.NFC, 2014/11/10, add for sim-swp will be detect when standby
 			ret = enable_irq_wake(pn547_dev->client->irq);
 			if(ret < 0)
 				{
 					printk("%s,power on enable_irq_wake  %d\n",__func__,ret);
 				}
-//#endif /* VENDOR_EDIT */				
+//#endif /* CONFIG_VENDOR_EDIT */				
 			printk("%s power on\n", __func__);
 			gpio_set_value(pn547_dev->firm_gpio, 0);
 			gpio_set_value(pn547_dev->ven_gpio, 1);
 			msleep(10);
 		} else  if (arg == 0) {
 			/* power off */
-//#ifdef VENDOR_EDIT
+//#ifdef CONFIG_VENDOR_EDIT
 //jiaoyifei@Connectivity.NFC, 2014/11/10, add for sim-swp will be detect when standby
 			ret = disable_irq_wake(pn547_dev->client->irq);
 			if(ret < 0)
 				{
 					printk("%s,power off disable_irq_wake %d\n",__func__,ret);
 				}
-//#endif /* VENDOR_EDIT */				
+//#endif /* CONFIG_VENDOR_EDIT */				
 			printk("%s power off\n", __func__);
 			gpio_set_value(pn547_dev->firm_gpio, 0);
 			gpio_set_value(pn547_dev->ven_gpio, 0);

@@ -360,10 +360,10 @@ struct mdss_panel_info {
 	u32 panel_orientation;
 	bool dynamic_switch_pending;
 	bool is_lpm_mode;
-//#ifdef VENDOR_EDIT
+//#ifdef CONFIG_VENDOR_EDIT
 /* Xiaori.Yuan@Mobile Phone Software Dept.Driver, 2014/07/21  Add for LCD rotate 180 degree */
 	bool is_panel_inverted;
-//#endif /*VENDOR_EDIT*/
+//#endif /*CONFIG_VENDOR_EDIT*/
 
 	char panel_name[MDSS_MAX_PANEL_LEN];
 	struct mdss_mdp_pp_tear_check te;

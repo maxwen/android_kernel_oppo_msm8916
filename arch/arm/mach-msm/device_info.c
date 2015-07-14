@@ -1,6 +1,6 @@
 /**
  * Copyright 2008-2013 OPPO Mobile Comm Corp., Ltd, All rights reserved.
- * VENDOR_EDIT:
+ * CONFIG_VENDOR_EDIT:
  * FileName:devinfo.c
  * ModuleName:devinfo
  * Author: wangjc
@@ -193,7 +193,7 @@ static void mainboard_verify(void)
 	register_device_proc("mainboard", mainboard_info.version, mainboard_info.manufacture);
 }
 
-#ifdef VENDOR_EDIT//Fanhong.Kong@ProDrv.CHG,modified 2014.4.13 for 14027
+#ifdef CONFIG_VENDOR_EDIT//Fanhong.Kong@ProDrv.CHG,modified 2014.4.13 for 14027
 static void pa_verify(void)
 {
 	struct manufacture_info pa_info;
@@ -273,7 +273,7 @@ static void pa_verify(void)
 	register_device_proc("pa", pa_info.version, pa_info.manufacture);
 
 }
-#endif /*VENDOR_EDIT*/	
+#endif /*CONFIG_VENDOR_EDIT*/	
 
 static int __init device_info_init(void)
 {

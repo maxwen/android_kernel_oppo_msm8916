@@ -17,7 +17,7 @@
 #include "msm_led_flash.h"
 #include <linux/proc_fs.h>
 
-#ifdef VENDOR_EDIT
+#ifdef CONFIG_VENDOR_EDIT
 /*hufeng 2014-11-03 add foraviod led off twice*/
 static struct mutex flash_mode_lock;
 #endif
@@ -31,7 +31,7 @@ static struct mutex flash_mode_lock;
 #define LM3642_DBG(fmt, args...)
 #endif
 
-#ifdef VENDOR_EDIT
+#ifdef CONFIG_VENDOR_EDIT
 /*OPPO 2014-08-01 hufeng add for flash engineer mode test*/
 struct delayed_work led_blink_work;
 bool blink_test_status;
@@ -43,7 +43,7 @@ extern bool camera_power_status;
 static struct msm_led_flash_ctrl_t fctrl;
 static struct i2c_driver lm3642_i2c_driver;
 
-#ifdef VENDOR_EDIT
+#ifdef CONFIG_VENDOR_EDIT
 /*xianglie.liu 2014-09-02 add for set flash and torch current*/
 /*zhengrong.zhang 2014-11-08 Modify for gpio contrl lm3642 */
 /*
@@ -312,7 +312,7 @@ int msm_flash_lm3642_led_high(struct msm_led_flash_ctrl_t *fctrl)
 
 	return rc;
 }
-#ifdef VENDOR_EDIT
+#ifdef CONFIG_VENDOR_EDIT
 /*OPPO 2014-08-01 hufeng add for flash engineer mode test*/
 struct regulator *vreg;
 int led_test_mode;
@@ -483,7 +483,7 @@ static int flash_proc_init(struct msm_led_flash_ctrl_t *flash_ctl)
 	}
 	return ret;
 }
-#endif /* VENDOR_EDIT */
+#endif /* CONFIG_VENDOR_EDIT */
 static int msm_flash_lm3642_i2c_probe(struct i2c_client *client,
 		const struct i2c_device_id *id)
 {
@@ -561,7 +561,7 @@ static struct i2c_driver lm3642_i2c_driver = {
 		.of_match_table = lm3642_i2c_trigger_dt_match,
 	},
 };
-#ifdef VENDOR_EDIT
+#ifdef CONFIG_VENDOR_EDIT
 /*OPPO hufeng 2014-07-24 add for flash cci driver*/
 static const struct of_device_id lm3642_trigger_dt_match[] = 
 {
@@ -572,7 +572,7 @@ static int msm_flash_lm3642_platform_probe(struct platform_device *pdev)
 {
 	int rc;
 	const struct of_device_id *match;
-#ifdef VENDOR_EDIT
+#ifdef CONFIG_VENDOR_EDIT
 /*OPPO 2014-11-11 zhengrong.zhang add for torch can't use when open subcamera after boot*/
 	struct msm_camera_power_ctrl_t *power_info = NULL;
 #endif
@@ -585,7 +585,7 @@ static int msm_flash_lm3642_platform_probe(struct platform_device *pdev)
 	}
 	LM3642_DBG("%s of_match_device success\n", __func__);
 	rc = msm_flash_probe(pdev, match->data);
-#ifdef VENDOR_EDIT
+#ifdef CONFIG_VENDOR_EDIT
 /*OPPO hufeng 2014-09-02 add for individual flashlight*/
 	IS_FLASH_ON = 0;
 	mutex_init(&flash_mode_lock);
@@ -627,7 +627,7 @@ static int __init msm_flash_lm3642_init(void)
 {
 	int32_t rc = 0;
 	LM3642_DBG("%s entry\n", __func__);
-	#ifdef VENDOR_EDIT
+	#ifdef CONFIG_VENDOR_EDIT
 	/*OPPO hufeng 2014-07-24 add for flash cci probe*/
 
 	rc = platform_driver_register(&lm3642_platform_driver);
@@ -702,7 +702,7 @@ static struct msm_led_flash_reg_t lm3642_regs = {
 static struct msm_flash_fn_t lm3642_func_tbl = {
 	.flash_get_subdev_id = msm_led_i2c_trigger_get_subdev_id,
 	.flash_led_config = msm_led_i2c_trigger_config,
-	#ifdef VENDOR_EDIT
+	#ifdef CONFIG_VENDOR_EDIT
 	/*OPPO 2014-07-24 modify for flash cci driver*/
 	.flash_led_init = msm_flash_led_init,
 	.flash_led_release = msm_flash_led_release,

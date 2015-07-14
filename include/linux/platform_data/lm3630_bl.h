@@ -51,7 +51,7 @@ struct lm3630_platform_data {
 	enum lm3630_bank_a_ctrl bank_a_ctrl;
 	enum lm3630_bank_b_ctrl bank_b_ctrl;
 	unsigned int pwm_period;
-#ifdef VENDOR_EDIT
+#ifdef CONFIG_VENDOR_EDIT
 /* Xinqin.Yang@PhoneSW.Multimedia, 2014/08/26  Add for enable gpio */
     int bl_en_gpio;
 	int i2c_1v8_gpio_14051;

@@ -13,7 +13,7 @@
 #ifndef __SPLASH_H_
 #define __SPLASH_H_
 
-#ifndef VENDOR_EDIT
+#ifndef CONFIG_VENDOR_EDIT
 /* liuyan@Onlinerd.driver, 2014/10/15  Add for ftm sleep current too big */
 #define SPLASH_IMAGE_WIDTH	113
 #define SPLASH_IMAGE_HEIGHT	124
@@ -24,7 +24,7 @@
 #define SPLASH_IMAGE_FORMAT	MDP_BGR_888
 #define SPLASH_IMAGE_BPP	3
 
-#ifndef VENDOR_EDIT
+#ifndef CONFIG_VENDOR_EDIT
 /* liuyan@Onlinerd.driver, 2014/10/15  Add for ftm sleep current too bit */
 char splash_bgr888_image[] = {
 	0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,

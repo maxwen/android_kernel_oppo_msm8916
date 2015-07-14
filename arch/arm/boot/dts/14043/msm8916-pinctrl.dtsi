@@ -1127,13 +1127,13 @@
 		};
 
 		tlmm_gpio_key {
-		//#ifdef VENDOR_EDIT //Modify by Tong.han@bsp.group 2014-9-11 for gpio setting conflict
+		//#ifdef CONFIG_VENDOR_EDIT //Modify by Tong.han@bsp.group 2014-9-11 for gpio setting conflict
 			qcom,pins = <&gp 107>, <&gp 108>;//, <&gp 109>;
 		//#else
 		//	qcom,pins = <&gp 107>, <&gp 108>, <&gp 109>;
 		//#endif
 			qcom,pin-func = <0>;			
-		//#ifdef VENDOR_EDIT //Modify by Tong.han@bsp.group 2014-9-11 for gpio setting conflict
+		//#ifdef CONFIG_VENDOR_EDIT //Modify by Tong.han@bsp.group 2014-9-11 for gpio setting conflict
 			qcom,num-grp-pins = <2>;
 		//#else
 		//	qcom,num-grp-pins = <3>;

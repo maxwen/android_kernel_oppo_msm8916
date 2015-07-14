@@ -1,6 +1,6 @@
 /*************************************************************
  ** Copyright (C), 2012-2016, OPPO Mobile Comm Corp., Ltd 
- ** VENDOR_EDIT
+ ** CONFIG_VENDOR_EDIT
  ** File        : stk3x1x.c
  ** Description : 
  ** Date        : 2014-08-04 19:33
@@ -197,9 +197,9 @@
 #define STK_FIR_LEN 4
 #define MAX_FIR_LEN 32
 
-#ifdef VENDOR_EDIT /* LiuPing@Phone.BSP.Sensor, 2014/08/04, add for dynamic threshold */
+#ifdef CONFIG_VENDOR_EDIT /* LiuPing@Phone.BSP.Sensor, 2014/08/04, add for dynamic threshold */
 #define ALSPS_DYNAMIC_THRESHOLD
-#endif /*VENDOR_EDIT*/
+#endif /*CONFIG_VENDOR_EDIT*/
 
 #ifdef ALSPS_DYNAMIC_THRESHOLD
 static int ps_min = 0;

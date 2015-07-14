@@ -390,7 +390,7 @@
 			};
 		};
 
-		/* #ifdef VENDOR_EDIT dengnw@bsp.drv add for i2c1 20140721 start*/
+		/* #ifdef CONFIG_VENDOR_EDIT dengnw@bsp.drv add for i2c1 20140721 start*/
 		pmx_i2c_1 {
 			/* CLK, DATA */
 			qcom,pins = <&gp 2>, <&gp 3>;
@@ -544,7 +544,7 @@
                         };
                 };
 
-		/* #ifdef VENDOR_EDIT liuping@BSP.drv add for sensor in 20140918*/
+		/* #ifdef CONFIG_VENDOR_EDIT liuping@BSP.drv add for sensor in 20140918*/
 		apds99xx_int_pin {
 			/* Ambient light and proximity sensor apds9930 and apds9900 */
 			qcom,pins = <&gp 9>;
@@ -1125,7 +1125,7 @@
 		};
 
 		/* CoreSight */
-		/*#ifdef VENDOR_EDIT yxr delete default config gp8*/
+		/*#ifdef CONFIG_VENDOR_EDIT yxr delete default config gp8*/
 		/*tpiu_seta_1 {
 			qcom,pins = <&gp 8>;
 			qcom,num-grp-pins = <1>;
@@ -1137,7 +1137,7 @@
 			};
 		};*/
 
-		/*#ifdef VENDOR_EDIT liuping delete default config gp9*/
+		/*#ifdef CONFIG_VENDOR_EDIT liuping delete default config gp9*/
 		/*
 		tpiu_seta_2 {
 			qcom,pins = <&gp 9>;

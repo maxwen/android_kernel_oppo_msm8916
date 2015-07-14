@@ -247,7 +247,7 @@
 			};
 		};
 
-		/* #ifdef VENDOR_EDIT dengnw@bsp.drv add for i2c1 20140721 start*/
+		/* #ifdef CONFIG_VENDOR_EDIT dengnw@bsp.drv add for i2c1 20140721 start*/
 		pmx_i2c_1 {
 			/* CLK, DATA */
 			qcom,pins = <&gp 2>, <&gp 3>;
@@ -333,11 +333,11 @@
 		};
 
 		usb-id-pin {
-//#ifndef VENDOR_EDIT //Jianfeng.Qiu@BSP.Driver, 2014-09-18, Modify for OTG id pin change
+//#ifndef CONFIG_VENDOR_EDIT //Jianfeng.Qiu@BSP.Driver, 2014-09-18, Modify for OTG id pin change
 			//qcom,pins = <&gp 110>;
-//#else /* VENDOR_EDIT */
+//#else /* CONFIG_VENDOR_EDIT */
 			qcom,pins = <&gp 98>;
-//#endif /* VENDOR_EDIT */
+//#endif /* CONFIG_VENDOR_EDIT */
 			qcom,num-grp-pins = <1>;
 			qcom,pin-func = <0>;
 			label = "usb-id-pin";
@@ -694,7 +694,7 @@
 			};
 		};
 
-//#ifndef VENDOR_EDIT //Jianfeng.Qiu@BSP.Driver, 2014-09-13, Modify for use gpio 121 for sdcard vdd supply enable/disable
+//#ifndef CONFIG_VENDOR_EDIT //Jianfeng.Qiu@BSP.Driver, 2014-09-13, Modify for use gpio 121 for sdcard vdd supply enable/disable
 /*
 		cdc-vdd-spkr {
 			qcom,pins = <&gp 121>;
@@ -712,14 +712,14 @@
 			};
 		};
 */
-//# /* VENDOR_EDIT */
+//# /* CONFIG_VENDOR_EDIT */
 		sdhc2_vdd_pin {
 			qcom,pins = <&gp 121>;
 			qcom,num-grp-pins = <1>;
 			qcom,pin-func = <0>;
 			label = "vdd-gpio-en";
 		};
-//#endif /* VENDOR_EDIT */
+//#endif /* CONFIG_VENDOR_EDIT */
 
 		ext_buck_vsel {
 			qcom,pins = <&gp 111>;

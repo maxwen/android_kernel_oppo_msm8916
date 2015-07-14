@@ -1,6 +1,6 @@
 /***********************************************************
 ** Copyright (C), 2008-2012, OPPO Mobile Comm Corp., Ltd
-** VENDOR_EDIT
+** CONFIG_VENDOR_EDIT
 ** File: - pn544.h
 * Description: Head file for pn544.
 *           To define pn544 array and register address.

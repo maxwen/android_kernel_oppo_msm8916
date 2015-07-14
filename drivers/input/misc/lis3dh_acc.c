@@ -1,6 +1,6 @@
 /*************************************************************
  ** Copyright (C), 2008-2012, OPPO Mobile Comm Corp., Ltd 
- ** VENDOR_EDIT
+ ** CONFIG_VENDOR_EDIT
  ** File        : lis3dh_acc.c
  ** Description : 
  ** Date        : 2014-07-19 16:37
@@ -262,9 +262,9 @@ struct lis3dh_acc_data {
 #ifdef DEBUG
 	u8 reg_addr;
 #endif
-//#ifdef VENDOR_EDIT /* LiuPing@Phone.BSP.Sensor, 2014/07/30, add for gsensor cali */
+//#ifdef CONFIG_VENDOR_EDIT /* LiuPing@Phone.BSP.Sensor, 2014/07/30, add for gsensor cali */
         s16   cali_sw[LIS3DH_AXES_NUM+1];
-//#endif /*VENDOR_EDIT*/
+//#endif /*CONFIG_VENDOR_EDIT*/
 };
 
 static struct sensors_classdev lis3dh_acc_cdev = {
@@ -775,7 +775,7 @@ static int lis3dh_acc_get_acceleration_data(struct lis3dh_acc_data *acc,
 			LIS3DH_ACC_DEV_NAME, xyz[0], xyz[1], xyz[2]);
 	#endif
 
-//#ifdef VENDOR_EDIT /* LiuPing@Phone.BSP.Sensor, 2014/07/30, add for gsensor cali */
+//#ifdef CONFIG_VENDOR_EDIT /* LiuPing@Phone.BSP.Sensor, 2014/07/30, add for gsensor cali */
         //when user calibrat gsensor, need original data from lis3dh ,can not add cali_sw data
         if(!cali_flag) 
         {
@@ -787,7 +787,7 @@ static int lis3dh_acc_get_acceleration_data(struct lis3dh_acc_data *acc,
 	dev_dbg(&acc->client->dev, "%s after cali: the data x=%d, y=%d, z=%d\n",
 			LIS3DH_ACC_DEV_NAME, xyz[0], xyz[1], xyz[2]);
 	#endif
-//#endif /*VENDOR_EDIT*/
+//#endif /*CONFIG_VENDOR_EDIT*/
     
 	return err;
 }
@@ -949,7 +949,7 @@ static ssize_t attr_set_range(struct device *dev,
 	return size;
 }
 
-//#ifdef VENDOR_EDIT /* LiuPing@Phone.BSP.Sensor, 2014/07/29, add for gsensor cali */
+//#ifdef CONFIG_VENDOR_EDIT /* LiuPing@Phone.BSP.Sensor, 2014/07/29, add for gsensor cali */
 static int calculate_gsensor_cali_data(struct i2c_client *client, int data[LIS3DH_AXES_NUM+1])
 {
     u8 i = 0;
@@ -1067,7 +1067,7 @@ static ssize_t attr_set_cali(struct device *dev,
        
         return size;
 }
-//#endif /*VENDOR_EDIT*/
+//#endif /*CONFIG_VENDOR_EDIT*/
 
 static ssize_t attr_get_enable(struct device *dev,
 			       struct device_attribute *attr, char *buf)
@@ -1262,9 +1262,9 @@ static struct device_attribute attributes[] = {
 	__ATTR(poll_delay, 0664, attr_get_polling_rate,
 			attr_set_polling_rate),
 	__ATTR(range, 0664, attr_get_range, attr_set_range),
-//#ifdef VENDOR_EDIT /* LiuPing@Phone.BSP.Sensor, 2014/07/29, add for gsensor cali */
+//#ifdef CONFIG_VENDOR_EDIT /* LiuPing@Phone.BSP.Sensor, 2014/07/29, add for gsensor cali */
 	__ATTR(cali, 0664, attr_get_cali, attr_set_cali),	
-//#endif /*VENDOR_EDIT*/
+//#endif /*CONFIG_VENDOR_EDIT*/
 	__ATTR(enable, 0664, attr_get_enable, attr_set_enable),
 	__ATTR(int1_config, 0664, attr_get_intconfig1, attr_set_intconfig1),
 	__ATTR(int1_duration, 0664, attr_get_duration1, attr_set_duration1),

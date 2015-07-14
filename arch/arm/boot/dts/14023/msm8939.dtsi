@@ -23,7 +23,7 @@
 / {
 	model = "Qualcomm Technologies, Inc. MSM8939";
 	compatible = "qcom,msm8939";
-	/*#ifdef VENDOR_EDIT  //dengnw@bsp.drv  for dtsi in 20140901*/
+	/*#ifdef CONFIG_VENDOR_EDIT  //dengnw@bsp.drv  for dtsi in 20140901*/
 	qcom,msm-id = <239 0x10000>, <241 0>, <263 0>;
 	/*#endif*/
 	chosen {
@@ -207,7 +207,7 @@
 		};
 	};
 	
-//#ifdef VENDOR_EDIT
+//#ifdef CONFIG_VENDOR_EDIT
 //WeiHong.Li@OnLineRD.AirService.Module, 2013/10/24, add for OEM DATA region 
 	memory_hole: qcom,msm-mem-hole {
 		compatible = "qcom,msm-mem-hole";

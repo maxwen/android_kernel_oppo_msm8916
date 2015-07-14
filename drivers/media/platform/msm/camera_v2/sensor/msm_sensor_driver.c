@@ -29,7 +29,7 @@
 
 #define SENSOR_MAX_MOUNTANGLE (360)
 
-#ifdef VENDOR_EDIT
+#ifdef CONFIG_VENDOR_EDIT
 #include <mach/oppo_project.h> 
 #include <mach/device_info.h>
 /*liubin 2014-10-24 add for 14037/14039/14040 devices information*/
@@ -931,7 +931,7 @@ static int32_t msm_sensor_driver_platform_probe(struct platform_device *pdev)
 	/* Fill device in power info */
 	s_ctrl->sensordata->power_info.dev = &pdev->dev;
 
-#ifdef VENDOR_EDIT
+#ifdef CONFIG_VENDOR_EDIT
 	/*liubin 2014-10-24 add for 14037/14039/14040 devices information*/
 	if(is_project(OPPO_14037) || is_project(OPPO_14039) || is_project(OPPO_14051))
 	{

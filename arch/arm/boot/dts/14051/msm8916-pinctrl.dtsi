@@ -81,7 +81,7 @@
 
 		cdc-ext-pa-lines {
 			qcom,pins = <&gp 113>, <&gp 114>,
-//#ifdef VENDOR_EDIT //tong.han@BSP.Driver, 2014-09-13, Modify for use gpio 115 for sdcard vdd supply enable/disable
+//#ifdef CONFIG_VENDOR_EDIT //tong.han@BSP.Driver, 2014-09-13, Modify for use gpio 115 for sdcard vdd supply enable/disable
 			 <&gp 116>;
 			qcom,num-grp-pins = <3>;
 //#else			
@@ -889,7 +889,7 @@
 				bias-disable;
 			};
 		};
-//#ifndef VENDOR_EDIT //tong.han@BSP.Driver, 2014-09-13, Modify for use gpio 115 for sdcard vdd supply enable/disable
+//#ifndef CONFIG_VENDOR_EDIT //tong.han@BSP.Driver, 2014-09-13, Modify for use gpio 115 for sdcard vdd supply enable/disable
 /*
 		tpiu_seta_18 {
 			qcom,pins = <&gp 115>;
@@ -910,7 +910,7 @@
 			qcom,pin-func = <0>;
 			label = "vdd-gpio-en";
 		};
-/* VENDOR_EDIT */
+/* CONFIG_VENDOR_EDIT */
 
 		tpiu_setb_1 {
 			qcom,pins = <&gp 4>;

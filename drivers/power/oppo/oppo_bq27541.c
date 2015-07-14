@@ -1,6 +1,6 @@
 /*******************************************************************************
 * Copyright (c)  2014- 2014  Guangdong OPPO Mobile Telecommunications Corp., Ltd
-* VENDOR_EDIT
+* CONFIG_VENDOR_EDIT
 * Description: Source file for CBufferList.
 *           To allocate and free memory block safely.
 * Version   : 0.0
@@ -17,9 +17,9 @@
 #define OPPO_BQ27541_PAR
 #include <oppo_inc.h>
 
-#ifdef VENDOR_EDIT
+#ifdef CONFIG_VENDOR_EDIT
 extern char *BQ27541_HMACSHA1_authenticate(char *Message,char *Key,char *result);
-#endif //VENDOR_EDIT
+#endif //CONFIG_VENDOR_EDIT
 
 /* OPPO 2013-12-20 liaofuchun add for fastchg firmware update */
 #ifdef OPPO_USE_FAST_CHARGER
@@ -495,7 +495,7 @@ static int bq27541_is_battery_id_valid(void)
 }
 
 /* OPPO 2013-08-24 wangjc Add begin for add adc interface. */
-#ifdef VENDOR_EDIT
+#ifdef CONFIG_VENDOR_EDIT
 static int bq27541_get_batt_remaining_capacity(void)
 {
 	return bq27541_remaining_capacity(bq27541_di);
@@ -617,7 +617,7 @@ static struct qpnp_battery_gauge bq27541_batt_gauge = {
 	.is_battery_temp_within_range	= bq27541_is_battery_temp_within_range,
 	.is_battery_id_valid		= bq27541_is_battery_id_valid,
 /* OPPO 2013-09-30 wangjc Add begin for add new interface */
-#ifdef VENDOR_EDIT
+#ifdef CONFIG_VENDOR_EDIT
 	.get_batt_remaining_capacity = bq27541_get_batt_remaining_capacity,
 	.get_battery_soc			= bq27541_get_battery_soc,
 	.get_average_current		= bq27541_get_average_current,
@@ -679,7 +679,7 @@ static int bq27541_read_i2c(u8 reg, int *rt_value, int b_single,
 {
 	struct i2c_client *client = di->client;
 /* OPPO 2013-12-09 wangjc Modify begin for use standard i2c interface */
-#ifndef VENDOR_EDIT
+#ifndef CONFIG_VENDOR_EDIT
 	struct i2c_msg msg[1];
 #else
 	struct i2c_msg msg[2];
@@ -693,7 +693,7 @@ static int bq27541_read_i2c(u8 reg, int *rt_value, int b_single,
 	
 	mutex_lock(&battery_mutex);
 /* OPPO 2013-12-09 wangjc Modify begin for use standard i2c interface */
-#ifndef VENDOR_EDIT
+#ifndef CONFIG_VENDOR_EDIT
 	msg->addr = client->addr;
 	msg->flags = 0;
 	msg->len = 1;
@@ -855,7 +855,7 @@ static struct platform_device this_device = {
 };
 #endif
 
-#ifdef VENDOR_EDIT
+#ifdef CONFIG_VENDOR_EDIT
 /*OPPO 2013-09-18 liaofuchun add begin for bq27541 authenticate */
 #define BLOCKDATACTRL	0X61
 #define DATAFLASHBLOCK	0X3F
@@ -926,7 +926,7 @@ static bool bq27541_authenticate(struct i2c_client *client)
 /* OPPO 2014-02-25 sjc Modify end */
 #endif //CONFIG_VENDOR_EDIT
 
-#ifdef VENDOR_EDIT
+#ifdef CONFIG_VENDOR_EDIT
 //Fuchun.Liao@EXP.Driver,2014/01/10 add for check battery type
 #define BATTERY_2700MA		0
 #define BATTERY_3000MA		1
@@ -2205,10 +2205,10 @@ int msmrtc_alarm_read_time(struct rtc_time *tm)
 	struct rtc_device *alarm_rtc_dev;
 	int ret=0;
 
-#ifndef VENDOR_EDIT
+#ifndef CONFIG_VENDOR_EDIT
 /* jingchun.wang@Onlinerd.Driver, 2014/02/28  Delete for sovle alarm can't sleep */
 	wake_lock(&alarm_rtc_wake_lock);
-#endif /*CVENDOR_EDIT*/
+#endif /*CCONFIG_VENDOR_EDIT*/
 
 	alarm_rtc_dev = rtc_class_open(CONFIG_RTC_HCTOSYS_DEVICE);
 	if (alarm_rtc_dev == NULL) {
@@ -2223,17 +2223,17 @@ int msmrtc_alarm_read_time(struct rtc_time *tm)
 		goto err;
 	}
 
-#ifndef VENDOR_EDIT
+#ifndef CONFIG_VENDOR_EDIT
 /* jingchun.wang@Onlinerd.Driver, 2014/02/28  Delete for sovle alarm can't sleep */
 	wake_unlock(&alarm_rtc_wake_lock);
-#endif /*VENDOR_EDIT*/
+#endif /*CONFIG_VENDOR_EDIT*/
 	return 0;
 err:
 	pr_err("%s: rtc alarm will lost!", __func__);
-#ifndef VENDOR_EDIT
+#ifndef CONFIG_VENDOR_EDIT
 /* jingchun.wang@Onlinerd.Driver, 2014/02/28  Delete for sovle alarm can't sleep */
 	wake_unlock(&alarm_rtc_wake_lock);
-#endif /*VENDOR_EDIT*/
+#endif /*CONFIG_VENDOR_EDIT*/
 	return -1;
 
 }

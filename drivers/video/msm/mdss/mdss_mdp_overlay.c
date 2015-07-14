@@ -481,10 +481,10 @@ int mdss_mdp_overlay_pipe_setup(struct msm_fb_data_type *mfd,
 	bool is_vig_needed = false;
 	u32 left_lm_w = left_lm_w_from_mfd(mfd);
 	u32 flags = 0;
-//#ifdef VENDOR_EDIT
+//#ifdef CONFIG_VENDOR_EDIT
 /* Xiaori.Yuan@Mobile Phone Software Dept.Driver, 2014/07/21  Add for LCD rotate 180 degree */
 	struct fb_var_screeninfo *var = &(mfd->fbi->var);
-//#endif /*VENDOR_EDIT*/
+//#endif /*CONFIG_VENDOR_EDIT*/
 
 	if (mdp5_data->ctl == NULL)
 		return -ENODEV;
@@ -682,7 +682,7 @@ int mdss_mdp_overlay_pipe_setup(struct msm_fb_data_type *mfd,
 		mdss_mdp_mixer_pipe_unstage(pipe, pipe->mixer_right);
 		pipe->is_right_blend = false;
 	}
-//#ifdef VENDOR_EDIT
+//#ifdef CONFIG_VENDOR_EDIT
 /* Xiaori.Yuan@Mobile Phone Software Dept.Driver, 2014/07/21  Add for LCD rotate 180 degree */
 	if(mfd->is_panel_inverted) {		
 		if (req->flags & MDP_FLIP_LR)			
@@ -695,7 +695,7 @@ int mdss_mdp_overlay_pipe_setup(struct msm_fb_data_type *mfd,
 			req->flags |= MDP_FLIP_UD;		
 		pr_debug("Panel is inverted.. flags are %x\n", req->flags);	
 	}
-//#endif /*VENDOR_EDIT*/
+//#endif /*CONFIG_VENDOR_EDIT*/
 	if (mfd->panel_orientation)
 		req->flags ^= mfd->panel_orientation;
 
@@ -719,13 +719,13 @@ int mdss_mdp_overlay_pipe_setup(struct msm_fb_data_type *mfd,
 	pipe->dst.w = req->dst_rect.w;
 	pipe->dst.h = req->dst_rect.h;
 
-//#ifdef VENDOR_EDIT
+//#ifdef CONFIG_VENDOR_EDIT
 /* Xiaori.Yuan@Mobile Phone Software Dept.Driver, 2014/07/21  Add for LCD rotate 180 degree */
 	if(mfd->is_panel_inverted) {		
 		pipe->dst.x = var->xres - pipe->dst.x - pipe->dst.w;
 		pipe->dst.y = var->yres - pipe->dst.y - pipe->dst.h;
 	}
-//#endif /*VENDOR_EDIT*/
+//#endif /*CONFIG_VENDOR_EDIT*/
 
 	pipe->horz_deci = req->horz_deci;
 	pipe->vert_deci = req->vert_deci;
@@ -3696,10 +3696,10 @@ int mdss_mdp_overlay_init(struct msm_fb_data_type *mfd)
 			rc = 0;
 		}
 	}
-//#ifdef VENDOR_EDIT
+//#ifdef CONFIG_VENDOR_EDIT
 /* Xiaori.Yuan@Mobile Phone Software Dept.Driver, 2014/07/21  Add for LCD rotate 180 degree */
 	mfd->is_panel_inverted = mfd->panel_info->is_panel_inverted;
-//#endif /*VENDOR_EDIT*/
+//#endif /*CONFIG_VENDOR_EDIT*/
 	return rc;
 init_fail:
 	kfree(mdp5_data);

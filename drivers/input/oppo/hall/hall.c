@@ -1,6 +1,6 @@
 /*************************************************************
  ** Copyright (C), 2008-2012, OPPO Mobile Comm Corp., Ltd 
- ** VENDOR_EDIT
+ ** CONFIG_VENDOR_EDIT
  ** File        : hall.c
  ** Description : Hall Sensor Driver
  ** Date        : 2014-1-6 22:49

@@ -2366,7 +2366,7 @@ int mask_request_validate(unsigned char mask_buf[])
 				return 1;
 			break;
 
-        #ifdef VENDOR_EDIT
+        #ifdef CONFIG_VENDOR_EDIT
         //WenLong.Cai@Mobile.Network, 2014/09/17, Modify for Non-Signaling antenna factory test.
 		case 0x13: /* DIAG_SUBSYS_FS */
 			if ((ss_cmd == 0) || (ss_cmd == 0x1) || (ss_cmd == 0x30) || (ss_cmd == 0x31))
@@ -2377,14 +2377,14 @@ int mask_request_validate(unsigned char mask_buf[])
 			if ((ss_cmd == 0) || (ss_cmd == 0x1))
 				return 1;
 			break;
-        #endif /* VENDOR_EDIT */
+        #endif /* CONFIG_VENDOR_EDIT */
         
-        #ifdef VENDOR_EDIT
+        #ifdef CONFIG_VENDOR_EDIT
         //WenLong.Cai@Mobile.Network, 2014/08/25, Add for Non-Signaling antenna factory test.
         case 0x0b:
             printk(KERN_INFO "DIAG_SUBSYS_FTM 0x0B");
             return 1;
-        #endif /* VENDOR_EDIT */
+        #endif /* CONFIG_VENDOR_EDIT */
         
 		default:
 			return 0;
@@ -2405,7 +2405,7 @@ int mask_request_validate(unsigned char mask_buf[])
 		case 0x82:    /* Set the event mask */
 			return 1;
 			break;
-        #ifdef VENDOR_EDIT
+        #ifdef CONFIG_VENDOR_EDIT
         //WenLong.Cai@Mobile.Network, 2014/08/25, Add for Non-Signaling antenna factory test.
 		case 0x29:
             printk(KERN_INFO "DIAG_SUBSYS_FTM 0x29\n");
@@ -2416,7 +2416,7 @@ int mask_request_validate(unsigned char mask_buf[])
         case 0x27:
             printk(KERN_INFO "DIAG_NV_WRITE_F 0x27\n");
             return 1;
-        #endif /* VENDOR_EDIT */
+        #endif /* CONFIG_VENDOR_EDIT */
 		default:
 			return 0;
 			break;

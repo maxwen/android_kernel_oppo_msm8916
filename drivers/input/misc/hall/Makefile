@@ -2,6 +2,6 @@
 #Makefile for OPPO hall sensor
 #
 
-#VENDOR_EDIT
+#CONFIG_VENDOR_EDIT
 obj-$(CONFIG_HALL) += hall.o
 

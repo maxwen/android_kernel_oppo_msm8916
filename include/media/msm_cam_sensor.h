@@ -408,7 +408,7 @@ struct msm_camera_sensor_slave_info {
 	uint8_t  is_init_params_valid;
 	struct msm_sensor_init_params sensor_init_params;
 };
-#ifdef VENDOR_EDIT
+#ifdef CONFIG_VENDOR_EDIT
 /* xianglie.liu 2014-10-11 add interface to get exposure time */
 struct msm_yuv_info {
 	uint32_t exp_time;
@@ -421,7 +421,7 @@ struct sensorb_cfg_data {
 	union {
 		struct msm_sensor_info_t      sensor_info;
 		struct msm_sensor_init_params sensor_init_params;
-#ifdef VENDOR_EDIT
+#ifdef CONFIG_VENDOR_EDIT
 /* xianglie.liu 2014-10-11 add interface to get exposure time */
 		struct msm_yuv_info yuv_info;
 #endif
@@ -512,7 +512,7 @@ enum msm_sensor_cfg_type_t {
 	CFG_SET_AUTOFOCUS,
 	CFG_CANCEL_AUTOFOCUS,
 	CFG_SET_STREAM_TYPE,
-#ifdef VENDOR_EDIT
+#ifdef CONFIG_VENDOR_EDIT
 /* xianglie.liu 2014-10-11 add interface to get exposure time */
 	CFG_GET_YUV_INFO,
 #endif

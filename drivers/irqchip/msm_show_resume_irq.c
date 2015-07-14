@@ -15,7 +15,7 @@
 #include <linux/kernel.h>
 #include <linux/init.h>
 
-#ifndef VENDOR_EDIT		//Fuchun.Liao@Mobile.BSP.CHG 2014-09-24 modify for printk the int of wakeup source
+#ifndef CONFIG_VENDOR_EDIT		//Fuchun.Liao@Mobile.BSP.CHG 2014-09-24 modify for printk the int of wakeup source
 int msm_show_resume_irq_mask;
 #else
 int msm_show_resume_irq_mask = 1;

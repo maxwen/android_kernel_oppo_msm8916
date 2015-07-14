@@ -196,7 +196,7 @@
 		};
 
 		/*
-		//#ifdef VENDOR_EDIT  
+		//#ifdef CONFIG_VENDOR_EDIT  
    		//deleted by dengnw@BSP.group (conflict with fast_charger data) 2014-8-29  
 		camera_snapshot {
 			label = "camera_snapshot";
@@ -662,7 +662,7 @@
 		qcom,src-sel = <2>; /* QPNP_PIN_SEL_FUNC_1 */
 		qcom,master-en = <1>;
 	};
-	/*#ifdef VENDOR_EDIT Xiaori.Yuan modified for lcd*/
+	/*#ifdef CONFIG_VENDOR_EDIT Xiaori.Yuan modified for lcd*/
 	gpio@c200 { /* GPIO 3 */
 		/* External regulator control for WTR */
 		/*status = "disabled";*/

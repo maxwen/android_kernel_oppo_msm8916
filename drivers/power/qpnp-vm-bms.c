@@ -38,11 +38,11 @@
 #include <linux/qpnp-revid.h>
 #include <uapi/linux/vm_bms.h>
 
-#ifdef VENDOR_EDIT
+#ifdef CONFIG_VENDOR_EDIT
 //Fuchun.Liao@Mobile.BSP.CHG 2014-10-09 add for use different battery-data
 #include <linux/qpnp-charger.h>
 #include <mach/oppo_project.h>
-#endif	//VENDOR_EDIT
+#endif	//CONFIG_VENDOR_EDIT
 
 /*Fuchun.Liao@Mobile.BSP.CHG 2014-08-02 add for debug*/
 /*
@@ -52,7 +52,7 @@
 */
 /*Fuchun.Liao add end*/
 
-#ifdef VENDOR_EDIT
+#ifdef CONFIG_VENDOR_EDIT
 //Fuchun.Liao@Mobile.BSP.CHG 2014-10-13 add for soc_jumped when charger_boot
 extern unsigned int boot_reason;
 #define PON_REASON_DC_CHG		4
@@ -424,7 +424,7 @@ static int backup_ocv_soc(struct qpnp_bms_chip *chip, int ocv_uv, int soc)
 	return rc;
 }
 
-#ifdef VENDOR_EDIT
+#ifdef CONFIG_VENDOR_EDIT
 int opchg_backup_ocv_soc(int soc)
 {
 	int rc;
@@ -1561,7 +1561,7 @@ static int report_vm_bms_soc(struct qpnp_bms_chip *chip)
 	 * initial OCV.
 	 */
 
-#ifndef VENDOR_EDIT
+#ifndef CONFIG_VENDOR_EDIT
 	backup_ocv_soc(chip, chip->last_ocv_uv, chip->last_soc);
 #endif
 	pr_debug("Reported SOC=%d\n", chip->last_soc);
@@ -2525,7 +2525,7 @@ static void adjust_pon_ocv(struct qpnp_bms_chip *chip, int batt_temp)
  		* calculations.
  		*/
 		if (pc < 2){
-#ifndef VENDOR_EDIT	//Fuchun.Liao@Mobile.BSP.CHG 2014-08-21 modify for rbatt when soc =0 in low_temp
+#ifndef CONFIG_VENDOR_EDIT	//Fuchun.Liao@Mobile.BSP.CHG 2014-08-21 modify for rbatt when soc =0 in low_temp
 			pc = 2;
 #else
 			pc = 5;
@@ -2591,7 +2591,7 @@ static int calculate_initial_soc(struct qpnp_bms_chip *chip)
 			pr_debug("Using shutdown SOC\n");
 		}
 	} 
-#ifdef VENDOR_EDIT
+#ifdef CONFIG_VENDOR_EDIT
 //Fuchun.Liao@Mobile.BSP.CHG 2014-10-13 add for soc_jumped when charger_boot
 	else if ((!shutdown_soc_invalid) && ((boot_reason == PON_REASON_USB_CHG) || 
 				(boot_reason == PON_REASON_DC_CHG) || (boot_reason == PON_REASON_CBLPWR)))
@@ -2602,7 +2602,7 @@ static int calculate_initial_soc(struct qpnp_bms_chip *chip)
 					chip->shutdown_ocv, batt_temp);
 		pr_debug("charger_boot Using shutdown SOC\n");
 	}
-#endif	//VENDOR_EDIT
+#endif	//CONFIG_VENDOR_EDIT
 	else {
 		/*
 		 * In PM8916 2.0 PON OCV calculation is delayed due to
@@ -2615,7 +2615,7 @@ static int calculate_initial_soc(struct qpnp_bms_chip *chip)
 		 /* !warm_reset use PON OCV only if shutdown SOC is invalid */
 		chip->calculated_soc = lookup_soc_ocv(chip,
 					chip->last_ocv_uv, batt_temp);
-#ifndef VENDOR_EDIT	//Fuchun.Liao@Mobile.BSP.CHG 2014-08-28 modify for shutdown_soc
+#ifndef CONFIG_VENDOR_EDIT	//Fuchun.Liao@Mobile.BSP.CHG 2014-08-28 modify for shutdown_soc
 		if (!shutdown_soc_invalid &&
 			(abs(shutdown_soc - chip->calculated_soc) <
 				chip->dt.cfg_shutdown_soc_valid_limit)) {
@@ -3126,7 +3126,7 @@ static int set_battery_data(struct qpnp_bms_chip *chip)
 		pr_err("cannot read battery id err = %lld\n", battery_id);
 		return battery_id;
 	}
-#ifndef VENDOR_EDIT	
+#ifndef CONFIG_VENDOR_EDIT	
 //Fuchun.Liao@Mobile.BSP.CHG 2014-10-09 modify to use different battery-data
 	node = of_find_node_by_name(chip->spmi->dev.of_node,
 					"qcom,battery-data");
@@ -3183,7 +3183,7 @@ static int set_battery_data(struct qpnp_bms_chip *chip)
 			return -EINVAL;
 		}
 	}
-#endif	//VENDOR_EDIT
+#endif	//CONFIG_VENDOR_EDIT
 
 	batt_data = devm_kzalloc(chip->dev,
 			sizeof(struct bms_battery_data), GFP_KERNEL);
@@ -3549,7 +3549,7 @@ static int qpnp_vm_bms_probe(struct spmi_device *spmi)
 
 	/* read battery-id and select the battery profile */
 	rc = set_battery_data(chip);
-#ifndef VENDOR_EDIT
+#ifndef CONFIG_VENDOR_EDIT
 //Fuchun.Liao@Mobile.BSP.CHG 2014-10-09 modify for use different battery-data
 	if (rc) {
 		pr_err("Unable to read battery data %d\n", rc);
@@ -3562,7 +3562,7 @@ static int qpnp_vm_bms_probe(struct spmi_device *spmi)
 		pr_err("Unable to read battery data %d\n", rc);
 		goto fail_init;
 	}
-#endif	//VENDOR_EDIT
+#endif	//CONFIG_VENDOR_EDIT
 	/* set the battery profile */
 	rc = config_battery_data(chip->batt_data);
 	if (rc) {

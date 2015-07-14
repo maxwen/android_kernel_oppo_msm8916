@@ -1,6 +1,6 @@
 /************************************************************************************
 ** File: - android\kernel\drivers\misc\ktd_shineled\ktd2026_driver.c
-** VENDOR_EDIT
+** CONFIG_VENDOR_EDIT
 ** Copyright (C), 2008-2012, OPPO Mobile Comm Corp., Ltd
 ** 
 ** Description:  

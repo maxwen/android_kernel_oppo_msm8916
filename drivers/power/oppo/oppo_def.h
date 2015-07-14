@@ -1,6 +1,6 @@
 /*******************************************************************************
 * Copyright (c)  2014- 2014  Guangdong OPPO Mobile Telecommunications Corp., Ltd
-* VENDOR_EDIT
+* CONFIG_VENDOR_EDIT
 * Description: Source file for CBufferList.
 *           To allocate and free memory block safely.
 * Version   : 0.0
@@ -188,7 +188,7 @@ struct opchg_charger {
     bool                            batt_cool;
     bool                            charge_voltage_over;
     bool                            batt_voltage_over;
-#ifdef VENDOR_EDIT
+#ifdef CONFIG_VENDOR_EDIT
     bool                            multiple_test;
 #endif
     bool                            suspending;

@@ -2150,7 +2150,7 @@ static void hi258_i2c_write_table(struct msm_sensor_ctrl_t *s_ctrl,
 		table++;
 	}
 }
-#ifdef VENDOR_EDIT
+#ifdef CONFIG_VENDOR_EDIT
 /* xianglie.liu 2014-10-11 add interface to get exposure time */
 static uint32_t hi258_get_exp(struct msm_sensor_ctrl_t *s_ctrl)
 {
@@ -2954,7 +2954,7 @@ int32_t hi258_sensor_config(struct msm_sensor_ctrl_t *s_ctrl,
 		hi258_set_white_balance_mode(s_ctrl, wb_mode);
 		break;
 	}
-#ifdef VENDOR_EDIT
+#ifdef CONFIG_VENDOR_EDIT
 /* xianglie.liu 2014-10-11 add interface to get exposure time */
 	case CFG_GET_YUV_INFO: {
 		cdata->cfg.yuv_info.exp_time= hi258_get_exp(s_ctrl);

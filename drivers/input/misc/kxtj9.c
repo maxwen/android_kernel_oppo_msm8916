@@ -1,6 +1,6 @@
 /*************************************************************
  ** Copyright (C), 2012-2016, OPPO Mobile Comm Corp., Ltd 
- ** VENDOR_EDIT
+ ** CONFIG_VENDOR_EDIT
  ** File        : kxtj9.c
  ** Description : 
  ** Date        : 2014-11-04 17:39
@@ -87,14 +87,14 @@
 #define KXTJ9_VIO_MIN_UV	1750000
 #define KXTJ9_VIO_MAX_UV	1950000
 
-//#ifdef VENDOR_EDIT /* LiuPing@Phone.BSP.Sensor, 2014/07/29, add for gsensor cali */
+//#ifdef CONFIG_VENDOR_EDIT /* LiuPing@Phone.BSP.Sensor, 2014/07/29, add for gsensor cali */
 #define KXTJ9_AXIS_X				0
 #define KXTJ9_AXIS_Y				1
 #define KXTJ9_AXIS_Z				2
 #define KXTJ9_CALIBRATION_FLAG     3
 #define KXTJ9_AXES_NUM				3
 #define KXTJ9_BUFSIZE				256
-//#endif /*VENDOR_EDIT*/
+//#endif /*CONFIG_VENDOR_EDIT*/
 
 
 #define KXTJ9_POLL_MODE
@@ -158,9 +158,9 @@ struct kxtj9_data {
 #ifdef KXTJ9_POLL_MODE    
 	struct delayed_work input_work;
 #endif
-//#ifdef VENDOR_EDIT /* LiuPing@Phone.BSP.Sensor, 2014/07/30, add for gsensor cali */
+//#ifdef CONFIG_VENDOR_EDIT /* LiuPing@Phone.BSP.Sensor, 2014/07/30, add for gsensor cali */
         s16   cali_sw[3+1];
-//#endif /*VENDOR_EDIT*/
+//#endif /*CONFIG_VENDOR_EDIT*/
 };
 
 
@@ -213,7 +213,7 @@ static void kxtj9_report_acceleration_data(struct kxtj9_data *tj9,int *xyz, int 
        y = tj9->pdata.negate_y ? -y : y;
        z = tj9->pdata.negate_z ? -z : z;
 
-//#ifdef VENDOR_EDIT /* LiuPing@Phone.BSP.Sensor, 2014/07/30, add for gsensor cali */
+//#ifdef CONFIG_VENDOR_EDIT /* LiuPing@Phone.BSP.Sensor, 2014/07/30, add for gsensor cali */
         //when user calibrat gsensor, need original data from kxtj9 ,can not add cali_sw data
         if(!cali_flag) 
         {
@@ -225,7 +225,7 @@ static void kxtj9_report_acceleration_data(struct kxtj9_data *tj9,int *xyz, int 
 	dev_dbg(&tj9->client->dev, "%s after cali: the data x=%d, y=%d, z=%d\n",
 			__func__, x, y, z);
 	#endif
-//#endif /*VENDOR_EDIT*/
+//#endif /*CONFIG_VENDOR_EDIT*/
 
        xyz[KXTJ9_AXIS_X] = x; 
        xyz[KXTJ9_AXIS_Y] = y; 
@@ -238,7 +238,7 @@ static void kxtj9_report_acceleration_data(struct kxtj9_data *tj9,int *xyz, int 
 }
 
 
-//#ifdef VENDOR_EDIT /* LiuPing@Phone.BSP.Sensor, 2014/07/29, add for gsensor cali */
+//#ifdef CONFIG_VENDOR_EDIT /* LiuPing@Phone.BSP.Sensor, 2014/07/29, add for gsensor cali */
 static int calculate_gsensor_cali_data(struct i2c_client *client, int data[KXTJ9_AXES_NUM+1])
 {
     u8 i = 0;
@@ -356,7 +356,7 @@ static ssize_t attr_set_cali(struct device *dev,
 
 static DEVICE_ATTR(cali, S_IRUGO|S_IWUSR|S_IWGRP,
 			attr_get_cali, attr_set_cali);
-//#endif /*VENDOR_EDIT*/
+//#endif /*CONFIG_VENDOR_EDIT*/
 
 
 
@@ -838,9 +838,9 @@ static DEVICE_ATTR(poll_delay, S_IRUGO|S_IWUSR|S_IWGRP,
 static struct attribute *kxtj9_attributes[] = {
 	&dev_attr_enable.attr,
 	&dev_attr_poll_delay.attr,
-//#ifdef VENDOR_EDIT /* LiuPing@Phone.BSP.Sensor, 2014/11/06, add for gsensor cali. */
+//#ifdef CONFIG_VENDOR_EDIT /* LiuPing@Phone.BSP.Sensor, 2014/11/06, add for gsensor cali. */
 	&dev_attr_cali.attr,
-//#endif /*VENDOR_EDIT*/
+//#endif /*CONFIG_VENDOR_EDIT*/
 	NULL
 };
 

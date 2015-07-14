@@ -307,7 +307,7 @@
 
 	#address-cells = <0>;
 	interrupt-parent = <&sdhc_2>;
-//#ifndef VENDOR_EDIT //Jianfeng.Qiu@BSP.Drv, 2014-8-13, Modify for delete card hotplug
+//#ifndef CONFIG_VENDOR_EDIT //Jianfeng.Qiu@BSP.Drv, 2014-8-13, Modify for delete card hotplug
 /*
 	interrupts = <0 1 2>;
 	#interrupt-cells = <1>;
@@ -318,14 +318,14 @@
 	interrupt-names = "hc_irq", "pwr_irq", "status_irq";
 	cd-gpios = <&msm_gpio 38 0x1>;
 */
-//#else /* VENDOR_EDIT */
+//#else /* CONFIG_VENDOR_EDIT */
 	interrupts = <0 1>;
 	#interrupt-cells = <1>;
 	interrupt-map-mask = <0xffffffff>;
 	interrupt-map = <0 &intc 0 125 0
 			1 &intc 0 221 0>;
 	interrupt-names = "hc_irq", "pwr_irq";
-//#endif /* VENDOR_EDIT */
+//#endif /* CONFIG_VENDOR_EDIT */
 	status = "ok";
 };
 

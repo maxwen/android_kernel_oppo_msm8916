@@ -684,7 +684,7 @@ static struct snd_soc_dai_driver msm_fe_dais[] = {
 		.probe = fe_dai_probe,
 	},
 	{
-#ifdef VENDOR_EDIT
+#ifdef CONFIG_VENDOR_EDIT
 		/*OPPO 2014-08-05 zhzhyon Add for loopback*/
 		.playback = 
 		{
