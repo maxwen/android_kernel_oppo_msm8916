@@ -85,7 +85,7 @@
 			clock-names = "ref_clk";
 		};
 /*OPPO jiaoyifei 2014-09-21 add begin for nfc*/
-//ifdef VENDOR_EDIT
+//ifdef CONFIG_VENDOR_EDIT
         nfc-pn547@28 {
 			compatible = "nxp,nfc-pn547";
 			reg = <0x28>;
@@ -104,12 +104,12 @@
 			clock-names = "ref_clk";
 			nxp,firm-gpio = <&msm_gpio 116 0x00>;
 		};		
-//endif //VENDOR_EDIT
+//endif //CONFIG_VENDOR_EDIT
 /*OPPO jiaoyifei 2014-09-21 add end*/
 
 /*#hanqing.wang delete for 14061 open code 2014-12-19 */
 /* OPPO 2014-10-24 John.Xu@Audio.Driver Add begin for ts4621 */
-//#ifdef VENDOR_EDIT
+//#ifdef CONFIG_VENDOR_EDIT
  //   	ts4621@60 {
   //  	    status = "okay";
    // 		compatible = "st,ts4621";
@@ -121,7 +121,7 @@
 	};
 
 /*OPPO jiaoyifei 2014-09-18 add begin for nfc*/
-//ifdef VENDOR_EDIT
+//ifdef CONFIG_VENDOR_EDIT
 //	i2c@78ba000 {
 //		pn544-nxp-nfc@28 {
 //			compatible = "pn544,nxp-nfc";
@@ -138,7 +138,7 @@
 
 //		};
 //	};
-//endif //VENDOR_EDIT
+//endif //CONFIG_VENDOR_EDIT
 /*OPPO jiaoyifei 2014-09-18 add end*/	
 	
 	
@@ -184,7 +184,7 @@
 			regulator-name = "bq24196_otg_vreg";
 		};
 
-		//#ifdef VENDOR_EDIT Tong.han@BSP.Driver.TP, 2014-09-22, Add for RGB breath-led
+		//#ifdef CONFIG_VENDOR_EDIT Tong.han@BSP.Driver.TP, 2014-09-22, Add for RGB breath-led
 	        sn3193_led@68 {
 	                status = "disabled";
 	                compatible = "sn3193,issi-rgb";
@@ -271,7 +271,7 @@
 			debounce-interval = <15>;
 		};
 	
-//#ifdef VENDOR_EDIT
+//#ifdef CONFIG_VENDOR_EDIT
 //deleted by Tong.han@BSP.group.TP (conflict with TP ID1) 2014-8-13
 /*	
 		camera_snapshot {
@@ -283,7 +283,7 @@
 			debounce-interval = <15>;
 		};
 */
-//#endif/*VENDOR_EDIT*/
+//#endif/*CONFIG_VENDOR_EDIT*/
 		vol_up {
 			label = "volume_up";
 			gpios = <&msm_gpio 107 0x1>;
@@ -334,7 +334,7 @@
 
 	#address-cells = <0>;
 	interrupt-parent = <&sdhc_2>;
-//#ifndef VENDOR_EDIT //Jianfeng.Qiu@BSP.Drv, 2014-8-13, Modify for delete card hotplug
+//#ifndef CONFIG_VENDOR_EDIT //Jianfeng.Qiu@BSP.Drv, 2014-8-13, Modify for delete card hotplug
 /*
 	interrupts = <0 1 2>;
 	#interrupt-cells = <1>;
@@ -345,14 +345,14 @@
 	interrupt-names = "hc_irq", "pwr_irq", "status_irq";
 	cd-gpios = <&msm_gpio 38 0x1>;
 */
-//#else /* VENDOR_EDIT */
+//#else /* CONFIG_VENDOR_EDIT */
 	interrupts = <0 1>;
 	#interrupt-cells = <1>;
 	interrupt-map-mask = <0xffffffff>;
 	interrupt-map = <0 &intc 0 125 0
 			1 &intc 0 221 0>;
 	interrupt-names = "hc_irq", "pwr_irq";
-//#endif /* VENDOR_EDIT */
+//#endif /* CONFIG_VENDOR_EDIT */
 	status = "ok";
 };
 

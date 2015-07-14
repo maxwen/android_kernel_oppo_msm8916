@@ -79,7 +79,7 @@ static int32_t msm_actuator_hall_effect_init_focus(
 	uint16_t size, struct reg_settings_t *settings)
 {
 	int32_t rc = 0;
-#ifndef VENDOR_EDIT
+#ifndef CONFIG_VENDOR_EDIT
 /*zhengtao.zhao 2014-08-26 modify to avoid too many times of impact when open camera */
 	rc = a_ctrl->i2c_client.i2c_func_tbl->i2c_write(
 		&a_ctrl->i2c_client, 0x02, 0x00,
@@ -453,7 +453,7 @@ static int32_t msm_actuator_move_focus(
 			a_ctrl->curr_region_index += sign_dir;
 		}
 		a_ctrl->curr_step_pos = target_step_pos;
-#ifdef VENDOR_EDIT
+#ifdef CONFIG_VENDOR_EDIT
 /*shijie.zhuo,2014/09/10,Add for close camera click*/
         a_ctrl->current_lens_pos = a_ctrl->step_position_table[a_ctrl->curr_step_pos];
 #endif
@@ -484,7 +484,7 @@ static int32_t msm_actuator_init_step_table(struct msm_actuator_ctrl_t *a_ctrl,
 	uint16_t step_boundary = 0;
 	uint32_t max_code_size = 1;
 	uint16_t data_size = set_info->actuator_params.data_size;
-#ifdef VENDOR_EDIT
+#ifdef CONFIG_VENDOR_EDIT
 /*OPPO 2014-08-08 hufeng modify for AF OTP*/
 	uint32_t cur_code_1000x = 0;
 #endif
@@ -514,7 +514,7 @@ static int32_t msm_actuator_init_step_table(struct msm_actuator_ctrl_t *a_ctrl,
 		return -ENOMEM;
 
 	cur_code = set_info->af_tuning_params.initial_code;
-#ifdef VENDOR_EDIT
+#ifdef CONFIG_VENDOR_EDIT
 /*OPPO 2014-08-08 hufeng modify for AF OTP*/
 	cur_code_1000x = cur_code*1000;
 #endif
@@ -529,7 +529,7 @@ static int32_t msm_actuator_init_step_table(struct msm_actuator_ctrl_t *a_ctrl,
 			step_bound[MOVE_NEAR];
 		for (; step_index <= step_boundary;
 			step_index++) {
-#ifdef VENDOR_EDIT
+#ifdef CONFIG_VENDOR_EDIT
 /*OPPO 2014-08-08 hufeng modify for AF OTP*/
 			cur_code_1000x +=code_per_step;
 			cur_code = cur_code_1000x/1000;
@@ -592,7 +592,7 @@ static int32_t msm_actuator_vreg_control(struct msm_actuator_ctrl_t *a_ctrl,
 	return rc;
 }
 
-#ifdef VENDOR_EDIT
+#ifdef CONFIG_VENDOR_EDIT
 /*shijie.zhuo,2014/09/10,Add for close camera click*/
 static int32_t msm_actuator_power_down(struct msm_actuator_ctrl_t *a_ctrl)
 {
@@ -935,7 +935,7 @@ static struct msm_camera_i2c_fn_t msm_sensor_cci_func_tbl = {
 	.i2c_read = msm_camera_cci_i2c_read,
 	.i2c_read_seq = msm_camera_cci_i2c_read_seq,
 	.i2c_write = msm_camera_cci_i2c_write,
-#ifdef VENDOR_EDIT
+#ifdef CONFIG_VENDOR_EDIT
 /*shijie.zhuo,2014/09/10,Add for close camera click*/
 	.i2c_write_seq = msm_camera_cci_i2c_write_seq,
 #endif
@@ -967,7 +967,7 @@ static int msm_actuator_close(struct v4l2_subdev *sd,
 		pr_err("failed\n");
 		return -EINVAL;
 	}
-#ifndef VENDOR_EDIT
+#ifndef CONFIG_VENDOR_EDIT
 /* xianglie.liu 2014-10-16 del for there is no cci init when actuator open */
 	if (a_ctrl->act_device_type == MSM_CAMERA_PLATFORM_DEVICE) {
 		rc = a_ctrl->i2c_client.i2c_func_tbl->i2c_util(

@@ -64,10 +64,10 @@ obj-$(CONFIG_TI_DRV2667) += ti_drv2667.o
 obj-$(CONFIG_QPNP_MISC) += qpnp-misc.o
 obj-$(CONFIG_APQ8084_DOCKING_STATION)	+= apq8084_dock.o
 obj-y				+= qcom/
-# ifdef VENDOR_EDIT //Jianfeng.Qiu@BSP.Driver, 2014/09/11, Add for breath led
+# ifdef CONFIG_VENDOR_EDIT //Jianfeng.Qiu@BSP.Driver, 2014/09/11, Add for breath led
 obj-$(CONFIG_SN3193_SLED)  += shineled/
 # endif
 
-# ifdef VENDOR_EDIT //Jianfeng.Qiu@BSP.Driver, 2014/09/11, Add for breath led
+# ifdef CONFIG_VENDOR_EDIT //Jianfeng.Qiu@BSP.Driver, 2014/09/11, Add for breath led
 obj-$(CONFIG_KTD2026_SLED)  += ktd_shineled/
 # endif

@@ -99,7 +99,7 @@ struct msm_actuator_ctrl_t {
 	uint16_t i2c_tbl_index;
 	enum cci_i2c_master_t cci_master;
 	uint32_t subdev_id;
-#ifdef VENDOR_EDIT
+#ifdef CONFIG_VENDOR_EDIT
 /*shijie.zhuo,2014/09/10,Add for close camera click*/
     uint16_t current_lens_pos;
 #endif

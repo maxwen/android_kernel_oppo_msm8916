@@ -511,7 +511,7 @@ power_attr(wake_unlock);
 #endif /* CONFIG_PM_WAKELOCKS */
 #endif /* CONFIG_PM_SLEEP */
 
-#ifdef VENDOR_EDIT
+#ifdef CONFIG_VENDOR_EDIT
 /* OPPO 2012-11-05 heiwei Modify begin for add interface start reason and boot_mode begin */
 extern char pwron_event[];
 
@@ -555,7 +555,7 @@ static ssize_t app_boot_store(struct kobject *kobj, struct kobj_attribute *attr,
 }
 power_attr(app_boot);
 /* OPPO 2012-11-05 Van heiwei begin for add interface start reason and boot_mode end */
-#endif //VENDOR_EDIT
+#endif //CONFIG_VENDOR_EDIT
 
 
 #ifdef CONFIG_PM_TRACE
@@ -651,12 +651,12 @@ static struct attribute * g[] = {
 	&pm_freeze_timeout_attr.attr,
 #endif
 
-#ifdef VENDOR_EDIT
+#ifdef CONFIG_VENDOR_EDIT
 /* OPPO 2012-11-05 heiwei Modify begin for add interface start reason and boot_mode begin */
 	&app_boot_attr.attr,
 	&startup_mode_attr.attr,
 /* OPPO 2012-11-05 heiwei Modify begin for add interface start reason and boot_mode end */
-#endif //VENDOR_EDIT
+#endif //CONFIG_VENDOR_EDIT
 	NULL,
 };
 

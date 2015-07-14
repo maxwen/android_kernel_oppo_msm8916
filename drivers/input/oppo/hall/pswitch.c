@@ -1,6 +1,6 @@
 /*************************************************************
  ** Copyright (C), 2008-2012, OPPO Mobile Comm Corp., Ltd 
- ** VENDOR_EDIT
+ ** CONFIG_VENDOR_EDIT
  ** File        : pswitch.c
  ** Description : pswitch  Driver
  ** Date        : 2014-03-21 22:49

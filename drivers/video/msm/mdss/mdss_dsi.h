@@ -295,7 +295,7 @@ struct mdss_dsi_ctrl_pdata {
 	int irq_cnt;
 	int rst_gpio;
 	int disp_en_gpio;
-#ifdef VENDOR_EDIT
+#ifdef CONFIG_VENDOR_EDIT
 /* Xinqin.Yang@PhoneSW.Multimedia, 2014/08/19  Add for -5V */
     int disp_en_negative_gpio;
 #endif /*CONFIG_VENDOR_EDIT*/

@@ -330,11 +330,11 @@
 
 &sdhc_2 {
 
-//#ifndef VENDOR_EDIT //caven.han@BSP.Driver, 2014-09-13, Modify for tf card vdd supply change,2014-11-04
+//#ifndef CONFIG_VENDOR_EDIT //caven.han@BSP.Driver, 2014-09-13, Modify for tf card vdd supply change,2014-11-04
 //	vdd-supply = <&pm8916_l11>;
 //#else
 	vdd-gpio-en = <&msm_gpio 115 0x1>;
-//#endif/*VENDOR_EDIT*/
+//#endif/*CONFIG_VENDOR_EDIT*/
 
  	qcom,vdd-voltage-level = <2800000 2950000>;
  	qcom,vdd-current-level = <15000 400000>;
@@ -349,7 +349,7 @@
 
 	#address-cells = <0>;
 	interrupt-parent = <&sdhc_2>;
-//#ifndef VENDOR_EDIT //Tong.han@BSP.Bl, 2014-11-07, Modify for delete card hotplug
+//#ifndef CONFIG_VENDOR_EDIT //Tong.han@BSP.Bl, 2014-11-07, Modify for delete card hotplug
 /*
 	interrupts = <0 1 2>;
 	#interrupt-cells = <1>;
@@ -360,14 +360,14 @@
 	interrupt-names = "hc_irq", "pwr_irq", "status_irq";
 	cd-gpios = <&msm_gpio 38 0x1>;
 */
-//#else /* VENDOR_EDIT */
+//#else /* CONFIG_VENDOR_EDIT */
 	interrupts = <0 1>;
 	#interrupt-cells = <1>;
 	interrupt-map-mask = <0xffffffff>;
 	interrupt-map = <0 &intc 0 125 0
 			1 &intc 0 221 0>;
 	interrupt-names = "hc_irq", "pwr_irq";
-//#endif /* VENDOR_EDIT */
+//#endif /* CONFIG_VENDOR_EDIT */
 	status = "ok";
 };
 

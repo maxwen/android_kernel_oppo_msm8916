@@ -77,7 +77,7 @@
 		qcom,cpr-fuse-corners = <3>;
 		qcom,cpr-voltage-ceiling = <1050000 1150000 1350000>;
 		qcom,cpr-voltage-floor = <1050000 1050000 1137500>;
-		//#ifdef VENDOR_EDIT 2014-08-25 yixue.ge modify for change other power ic to supply app core
+		//#ifdef CONFIG_VENDOR_EDIT 2014-08-25 yixue.ge modify for change other power ic to supply app core
 		//vdd-apc-supply = <&ncp6335d>;
 		//#else
 		vdd-apc-supply = <&fan53555>;

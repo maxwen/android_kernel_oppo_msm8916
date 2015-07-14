@@ -29,7 +29,7 @@
 #endif
 
 
-#ifdef VENDOR_EDIT
+#ifdef CONFIG_VENDOR_EDIT
 /* xianglie.liu 2014-09-05 add for add project name */
 #include <mach/oppo_project.h> 
  unsigned char my_vcm_id =1;
@@ -45,11 +45,11 @@ static unsigned char vcm_flag =1;
 #define DEVICE_MANUFACUTRE_S5K5E2	"SAMSUNG"
 #endif
 
-#ifdef VENDOR_EDIT
+#ifdef CONFIG_VENDOR_EDIT
 /* nanwei.deng@Mobile Phone Software bsp.Driver, 2014/10/30  Add for 14045 charger */
 extern void opchg_check_camera_on(void);
 extern void opchg_check_camera_off(void);
-#endif /*VENDOR_EDIT*/
+#endif /*CONFIG_VENDOR_EDIT*/
 
 static void msm_sensor_adjust_mclk(struct msm_camera_power_ctrl_t *ctrl)
 {
@@ -460,13 +460,13 @@ int msm_sensor_power_down(struct msm_sensor_ctrl_t *s_ctrl)
 		return -EINVAL;
 	}
 	
-	#if 0//def VENDOR_EDIT
+	#if 0//def CONFIG_VENDOR_EDIT
 	/* nanwei.deng@Mobile Phone Software bsp.Driver, 2014/10/30  Add for 14045 charger */
 	if(is_project(OPPO_14005)||is_project(OPPO_14045))
 	{
 		opchg_check_camera_off();
 	}
-	#endif /*VENDOR_EDIT*/
+	#endif /*CONFIG_VENDOR_EDIT*/
 	
 	return msm_camera_power_down(power_info, sensor_device_type,
 		sensor_i2c_client);
@@ -519,17 +519,17 @@ int msm_sensor_power_up(struct msm_sensor_ctrl_t *s_ctrl)
 		}
 	}
 	
-	#if 0//def VENDOR_EDIT
+	#if 0//def CONFIG_VENDOR_EDIT
 	/* nanwei.deng@Mobile Phone Software bsp.Driver, 2014/10/30  Add for 14045 charger */
 	if(is_project(OPPO_14005)||is_project(OPPO_14045))
 	{
 		opchg_check_camera_on();
 	}
-	#endif /*VENDOR_EDIT*/
+	#endif /*CONFIG_VENDOR_EDIT*/
 	return rc;
 }
 
-#ifdef VENDOR_EDIT
+#ifdef CONFIG_VENDOR_EDIT
 /* xianglie.liu 2014-09-12 Add for actutor Compatible */
 static void get_vcm_ID(struct msm_sensor_ctrl_t *s_ctrl)
 { 
@@ -538,7 +538,7 @@ static void get_vcm_ID(struct msm_sensor_ctrl_t *s_ctrl)
 	int32_t rc = 0;
 
 	if(vcm_flag >1) return;
-#ifdef VENDOR_EDIT
+#ifdef CONFIG_VENDOR_EDIT
 /* xianglie.liu 2014-09-27 Add for actutor Compatible */
 	if(strcmp(s_ctrl->sensordata->sensor_name, "ov5648_back"))return;
 #endif
@@ -802,7 +802,7 @@ int msm_sensor_match_id(struct msm_sensor_ctrl_t *s_ctrl)
 		pr_err("msm_sensor_match_id chip id doesnot match\n");
 		return -ENODEV;
 	}
-#ifdef VENDOR_EDIT
+#ifdef CONFIG_VENDOR_EDIT
 /* xianglie.liu 2014-09-12 Add for actutor Compatible */
 	if(is_project(OPPO_14043))
 	{
@@ -838,7 +838,7 @@ static void msm_sensor_stop_stream(struct msm_sensor_ctrl_t *s_ctrl)
 	mutex_unlock(s_ctrl->msm_sensor_mutex);
 	return;
 }
-#ifdef VENDOR_EDIT
+#ifdef CONFIG_VENDOR_EDIT
 /* OPPO 2014-08-14 hufeng merge from 8928 for at test */
 static void at_msm_sensor_power_down(struct msm_sensor_ctrl_t *s_ctrl)
 {
@@ -878,7 +878,7 @@ static long msm_sensor_subdev_ioctl(struct v4l2_subdev *sd,
 		return -EBADF;
 	}
 	/* OPPO 2014-08-14 hufeng merge from 8928 for at test */
-	#ifdef VENDOR_EDIT
+	#ifdef CONFIG_VENDOR_EDIT
 	if (cmd == 0 && arg == NULL) 
 	{
 		at_msm_sensor_power_down(s_ctrl);

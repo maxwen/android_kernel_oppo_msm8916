@@ -342,7 +342,7 @@
 		};
 	};
 	
-//#ifdef VENDOR_EDIT
+//#ifdef CONFIG_VENDOR_EDIT
 //WeiHong.Li@OnLineRD.AirService.Module, 2013/10/24, add for OEM DATA region 
 	memory_hole: qcom,msm-mem-hole {
 		compatible = "qcom,msm-mem-hole";
@@ -369,7 +369,7 @@
 		qcom,device-type = <3>;
 		qcom,pipe-attr-ee;
 	};
-/*#ifndef VENDOR_EDIT*/
+/*#ifndef CONFIG_VENDOR_EDIT*/
 /*ye.zhang@BSP, 2014-09-27,delete high speed serial configuration*/
 /*
 	blsp1_uart1: uart@78af000 {
@@ -410,7 +410,7 @@
 		status = "okay";
 	};
 */
-/*#endif//VENDOR_EDIT*/
+/*#endif//CONFIG_VENDOR_EDIT*/
 	blsp1_uart2: serial@78b0000 {
 		compatible = "qcom,msm-lsuart-v14";
 		reg = <0x78b0000 0x200>;
@@ -420,7 +420,7 @@
 			 <&clock_gcc clk_gcc_blsp1_ahb_clk>;
 		clock-names = "core_clk", "iface_clk";
 	};
-/*#ifdef VENDOR_EDIT*/
+/*#ifdef CONFIG_VENDOR_EDIT*/
 /*ye.zhang@BSP, add for low speed serial configuration*/
 	blsp1_uart1: serial@78af000 {
 		serial = <2>;
@@ -435,7 +435,7 @@
 		pinctrl-0 = <&hsuart_active>;
 	
 	};
-/*#endif//VENDOR_EDIT*/
+/*#endif//CONFIG_VENDOR_EDIT*/
 
 	qcom,usbbam@78c4000 {
 		compatible = "qcom,usb-bam-msm";

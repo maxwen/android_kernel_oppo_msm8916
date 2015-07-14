@@ -1,6 +1,6 @@
 /*******************************************************************************
 * Copyright (c)  2014- 2014  Guangdong OPPO Mobile Telecommunications Corp., Ltd
-* VENDOR_EDIT
+* CONFIG_VENDOR_EDIT
 * Description: Source file for CBufferList.
 *           To allocate and free memory block safely.
 * Version   : 0.0
@@ -934,7 +934,7 @@ void opchg_check_charging_time(struct opchg_charger *chip)
 }
 #endif
 
-#ifdef VENDOR_EDIT
+#ifdef CONFIG_VENDOR_EDIT
 void opchg_check_lcd_on(void)
 {
 	if(chip_opchg == NULL)

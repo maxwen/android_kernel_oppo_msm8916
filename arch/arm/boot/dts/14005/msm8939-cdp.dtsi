@@ -167,7 +167,7 @@
 		};
 
 		/*
-		//#ifdef VENDOR_EDIT  
+		//#ifdef CONFIG_VENDOR_EDIT  
    		//deleted by dengnw@BSP.group (conflict with fast_charger data) 2014-8-29  
 		camera_snapshot {
 			label = "camera_snapshot";
@@ -618,7 +618,7 @@
 
 &pmx_mdss {
 	qcom,num-grp-pins = <1>;
-	/*#ifdef VENDOR_EDIT yxr delete*/
+	/*#ifdef CONFIG_VENDOR_EDIT yxr delete*/
 	/*qcom,pins = <&gp 97>, <&gp 25>, <&gp 98>;*/
 	qcom,pins = <&gp 25>;
 };
@@ -627,7 +627,7 @@
 	qcom,num-grp-pins = <1>;
 	qcom,pins = <&gp 24>;
 };
-/*#ifdef VENDOR_EDIT Xiaori.Yuan modified for samsung oled*/
+/*#ifdef CONFIG_VENDOR_EDIT Xiaori.Yuan modified for samsung oled*/
 #include "dsi-panel-samsung_ams520bq04_s6e3fa2x01_1080p_cmd.dtsi"
 &mdss_dsi0 {
 	pinctrl-names = "mdss_default", "mdss_sleep";
@@ -648,7 +648,7 @@
 	/*qcom,platform-te-gpio = <&msm_gpio 24 0>;
 	qcom,platform-bklight-en-gpio = <&msm_gpio 98 0>;*/
 };
-/*#ifdef VENDOR_EDIT Xiaori.Yuan modified end*/
+/*#ifdef CONFIG_VENDOR_EDIT Xiaori.Yuan modified end*/
 
 &dsi_dual_sharp_video_0 {
         qcom,mdss-dsi-bl-pmic-control-type = "bl_ctrl_pwm";
@@ -715,7 +715,7 @@
 		qcom,src-sel = <2>; /* QPNP_PIN_SEL_FUNC_1 */
 		qcom,master-en = <1>;
 	};
-	/*#ifdef VENDOR_EDIT Xiaori.Yuan modified for lcd*/
+	/*#ifdef CONFIG_VENDOR_EDIT Xiaori.Yuan modified for lcd*/
 	gpio@c200 { /* GPIO 3 */
 		/* External regulator control for WTR */
 		/*status = "disabled";*/
@@ -738,7 +738,7 @@
 	pinctrl-names = "seta-pctrl", "setb-pctrl", "sdcard", "trace",
 			"swduart", "swdtrc", "jtag", "spmi";
 	/* Mictor */
-	/*#ifdef VENDOR_EDIT yxr delete seta_1*/
+	/*#ifdef CONFIG_VENDOR_EDIT yxr delete seta_1*/
 	pinctrl-0 = </*&seta_1*/ &seta_2 &seta_3 &seta_4 &seta_5 &seta_6 &seta_7
 		     &seta_8 &seta_9 &seta_10 &seta_11 &seta_12 &seta_13
 		     &seta_14 &seta_15 &seta_16 &seta_17 &seta_18>;

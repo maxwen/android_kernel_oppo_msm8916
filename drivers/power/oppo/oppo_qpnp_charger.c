@@ -1,6 +1,6 @@
 /*******************************************************************************
 * Copyright (c)  2014- 2014  Guangdong OPPO Mobile Telecommunications Corp., Ltd
-* VENDOR_EDIT
+* CONFIG_VENDOR_EDIT
 * Description: oppo-qpnp-charger.
 *           To disable PMIC charge when use smb358/bq24196.
 * Version   : 0.1

@@ -87,10 +87,10 @@ static int prjVersion_read_proc(struct file *file, char __user *buf,
 			len = sprintf(page,"%d",14023);
     }
 	else if(is_project(OPPO_14045)){
-        //#ifdef VENDOR_EDIT
+        //#ifdef CONFIG_VENDOR_EDIT
         //lile@EXP.BaseDrv.Audio, 2014-08-07 add for EXP to mark 14085
 		if(operator_version == 3 || 5 == operator_version || 6 == operator_version || 7 == operator_version)
-        //#endif VENDOR_EDIT
+        //#endif CONFIG_VENDOR_EDIT
 			len = sprintf(page,"%d",14046);
 		else if(operator_version == 4)
 			len = sprintf(page,"%d",14047);

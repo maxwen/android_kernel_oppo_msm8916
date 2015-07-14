@@ -1,6 +1,6 @@
 /*************************************************************
  ** Copyright (C), 2008-2012, OPPO Mobile Comm Corp., Ltd 
- ** VENDOR_EDIT
+ ** CONFIG_VENDOR_EDIT
  ** File        : mmc3416x.c
  ** Description : 
  ** Date        : 2014-07-30 21:25
@@ -58,13 +58,13 @@
 
 #include <mach/oppo_project.h>
 
-//#ifdef VENDOR_EDIT /* LiuPing@Phone.BSP.Sensor, 2014/07/30, add for add sys */
+//#ifdef CONFIG_VENDOR_EDIT /* LiuPing@Phone.BSP.Sensor, 2014/07/30, add for add sys */
 #define MMC3416X_ATTR_FILES
-//#endif /*VENDOR_EDIT*/
+//#endif /*CONFIG_VENDOR_EDIT*/
 
-#ifdef VENDOR_EDIT /* LiuPing@Phone.BSP.Sensor, 2014/07/31, add for global point to mmc3416x_data */
+#ifdef CONFIG_VENDOR_EDIT /* LiuPing@Phone.BSP.Sensor, 2014/07/31, add for global point to mmc3416x_data */
 static struct mmc3416x_data *g_memsic = NULL; 
-#endif /*VENDOR_EDIT*/
+#endif /*CONFIG_VENDOR_EDIT*/
 
 #define MMC3416X_DELAY_TM_MS	10
 
@@ -959,9 +959,9 @@ static int mmc3416x_probe(struct i2c_client *client, const struct i2c_device_id 
 
 	memsic->poll_interval = MMC3416X_DEFAULT_INTERVAL_MS;
 
-#ifdef VENDOR_EDIT /* LiuPing@Phone.BSP.Sensor, 2014/07/31, add for global point to mmc3416x_data. */
+#ifdef CONFIG_VENDOR_EDIT /* LiuPing@Phone.BSP.Sensor, 2014/07/31, add for global point to mmc3416x_data. */
        g_memsic = memsic;
-#endif /*VENDOR_EDIT*/
+#endif /*CONFIG_VENDOR_EDIT*/
 
 	dev_info(&client->dev, "mmc3416x successfully probed\n");
 	mmc3416x_ftm.name = "geomagnetic";

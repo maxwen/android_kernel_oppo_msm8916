@@ -52,7 +52,7 @@
 
 #include <linux/msm-bus.h>
 
-#ifdef VENDOR_EDIT	//Fuchun.Liao 2014-09-19 add
+#ifdef CONFIG_VENDOR_EDIT	//Fuchun.Liao 2014-09-19 add
 #include <mach/oppo_project.h>
 #endif
 #define MSM_USB_BASE	(motg->regs)
@@ -94,7 +94,7 @@ module_param(lpm_disconnect_thresh , uint, S_IRUGO | S_IWUSR);
 MODULE_PARM_DESC(lpm_disconnect_thresh,
 	"Delay before entering LPM on USB disconnect");
 
-#ifndef VENDOR_EDIT
+#ifndef CONFIG_VENDOR_EDIT
 static bool floated_charger_enable;
 #else
 static bool floated_charger_enable = 1;
@@ -1521,12 +1521,12 @@ static int msm_otg_notify_power_supply(struct msm_otg *motg, unsigned mA)
 			goto psy_error;
 		if (power_supply_set_current_limit(psy, 1000*mA))
 			goto psy_error;
-#ifndef VENDOR_EDIT
+#ifndef CONFIG_VENDOR_EDIT
 //Shu.Liu@OnlineRd.Driver, 2014/09/03, Added for fixing the disconnect issue swtich the charger and the mtp
 	} else if (motg->cur_power > 0 && (mA == 0 || mA == 2)) {
 #else
 	} else if (motg->cur_power > 0 && (mA == 0 || mA == 2) && (motg->chg_type == USB_INVALID_CHARGER)){
-#endif /*VENDOR_EDIT*/
+#endif /*CONFIG_VENDOR_EDIT*/
 		/* Disable charging */
 		if (power_supply_set_online(psy, false))
 			goto psy_error;
@@ -2851,7 +2851,7 @@ static void msm_otg_sm_work(struct work_struct *w)
 					}
 					/* fall through */
 				case USB_PROPRIETARY_CHARGER:
-#ifndef VENDOR_EDIT		//Fuchun.Liao@Mobile.BSP.CHG 2014-09-19 modify 14037 chg_current to 2A
+#ifndef CONFIG_VENDOR_EDIT		//Fuchun.Liao@Mobile.BSP.CHG 2014-09-19 modify 14037 chg_current to 2A
 					msm_otg_notify_charger(motg,
 							IDEV_CHG_MAX);
 
@@ -2864,7 +2864,7 @@ static void msm_otg_sm_work(struct work_struct *w)
 					pm_runtime_put_sync(otg->phy->dev);
 					break;
 				case USB_FLOATED_CHARGER:
-				    #ifndef VENDOR_EDIT
+				    #ifndef CONFIG_VENDOR_EDIT
 					////Fuchun.Liao@Mobile.BSP.CHG 2014-09-19 modify 14037 chg_current to 2A
 					msm_otg_notify_charger(motg,
 							IDEV_CHG_MAX);
@@ -4557,7 +4557,7 @@ struct msm_otg_platform_data *msm_otg_dt_to_pdata(struct platform_device *pdev)
 		pr_err("unable to allocate platform data\n");
 		return NULL;
 	}
-#ifndef VENDOR_EDIT //Jianfeng.Qiu@BSP.Driver, 2014-09-28, Modify for support parameters with usb switch
+#ifndef CONFIG_VENDOR_EDIT //Jianfeng.Qiu@BSP.Driver, 2014-09-28, Modify for support parameters with usb switch
 	of_get_property(node, "qcom,hsusb-otg-phy-init-seq", &len);
 	if (len) {
 		pdata->phy_init_seq = devm_kzalloc(&pdev->dev, len, GFP_KERNEL);
@@ -4567,7 +4567,7 @@ struct msm_otg_platform_data *msm_otg_dt_to_pdata(struct platform_device *pdev)
 				pdata->phy_init_seq,
 				len/sizeof(*pdata->phy_init_seq));
 	}
-#else /* VENDOR_EDIT */
+#else /* CONFIG_VENDOR_EDIT */
 	if(is_project(OPPO_14043)) {
 		switch (get_PCB_Version()) {
 			case HW_VERSION__10:
@@ -4609,7 +4609,7 @@ struct msm_otg_platform_data *msm_otg_dt_to_pdata(struct platform_device *pdev)
 					len/sizeof(*pdata->phy_init_seq));
 		}	
 	}
-#endif /* VENDOR_EDIT */
+#endif /* CONFIG_VENDOR_EDIT */
 	of_property_read_u32(node, "qcom,hsusb-otg-power-budget",
 				&pdata->power_budget);
 	of_property_read_u32(node, "qcom,hsusb-otg-mode",

@@ -45,7 +45,7 @@
    their framework which is 0.1DegC. True resolution of 0.1DegC
    will result in the below table size to increase by 10 times */
 
-//#ifdef VENDOR_EDIT
+//#ifdef CONFIG_VENDOR_EDIT
 #if 0
 //Fuchun.Liao@Mobile.BSP.CHG 2014-07-28 modify for btm lookup
 static const struct qpnp_vadc_map_pt adcmap_btm_threshold[] = {
@@ -247,7 +247,7 @@ static const struct qpnp_vadc_map_pt adcmap_btm_threshold[] = {
         {740,   438}, 
         {750,   436}, 
 };
-#endif	//VENDOR_EDIT
+#endif	//CONFIG_VENDOR_EDIT
 
 static const struct qpnp_vadc_map_pt adcmap_qrd_btm_threshold[] = {
 	{-200,	1540},

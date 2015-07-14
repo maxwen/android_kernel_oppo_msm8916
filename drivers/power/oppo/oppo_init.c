@@ -1,6 +1,6 @@
 /*******************************************************************************
 * Copyright (c)  2014- 2014  Guangdong OPPO Mobile Telecommunications Corp., Ltd
-* VENDOR_EDIT
+* CONFIG_VENDOR_EDIT
 * Description: Source file for CBufferList.
 *           To allocate and free memory block safely.
 * Version   : 0.0
@@ -652,7 +652,7 @@ static int opcharger_charger_probe(struct i2c_client *client, const struct i2c_d
 
 	opchg_chip = chip;
 	
-    #ifdef VENDOR_EDIT
+    #ifdef CONFIG_VENDOR_EDIT
 	/////////////////////////////////////////////////
 	//solve the problems for into the RF mode Usb charging  
 	if((get_boot_mode() == MSM_BOOT_MODE__RF) || (get_boot_mode() == MSM_BOOT_MODE__WLAN)) 
@@ -765,7 +765,7 @@ static int opcharger_resume(struct device *dev)
     }
     #endif
 	
-    #ifdef VENDOR_EDIT
+    #ifdef CONFIG_VENDOR_EDIT
     if (chip->bms_psy)
     {
         opchg_get_prop_batt_capacity(chip);

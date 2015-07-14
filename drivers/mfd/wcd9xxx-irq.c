@@ -30,7 +30,7 @@
 #define BYTE_BIT_MASK(nr)		(1UL << ((nr) % BITS_PER_BYTE))
 #define BIT_BYTE(nr)			((nr) / BITS_PER_BYTE)
 /*OPPO 2014-09-01 zhzhyon Modify for reason*/
-#ifndef VENDOR_EDIT
+#ifndef CONFIG_VENDOR_EDIT
 #define WCD9XXX_SYSTEM_RESUME_TIMEOUT_MS 100
 #else
 #define WCD9XXX_SYSTEM_RESUME_TIMEOUT_MS 300
@@ -121,7 +121,7 @@ static void wcd9xxx_irq_mask(struct irq_data *d)
 {
 	/* do nothing but required as linux calls irq_mask without NULL check */
 }
-#ifdef VENDOR_EDIT //yixue.ge add for if no register this function maybe make system crash
+#ifdef CONFIG_VENDOR_EDIT //yixue.ge add for if no register this function maybe make system crash
 static void wcd9xxx_irq_ack(struct irq_data *d)
 {
 	/* do nothing but required as linux calls irq_mask without NULL check */
@@ -135,7 +135,7 @@ static struct irq_chip wcd9xxx_irq_chip = {
 	.irq_disable = wcd9xxx_irq_disable,
 	.irq_enable = wcd9xxx_irq_enable,
 	.irq_mask = wcd9xxx_irq_mask,
-#ifdef VENDOR_EDIT //yixue.ge add for if no register this function maybe make system crash
+#ifdef CONFIG_VENDOR_EDIT //yixue.ge add for if no register this function maybe make system crash
 	.irq_ack = wcd9xxx_irq_ack,
 #endif
 };

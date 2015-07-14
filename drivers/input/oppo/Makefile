@@ -1,5 +1,5 @@
 
-#ifdef VENDOR_EDIT
+#ifdef CONFIG_VENDOR_EDIT
 obj-$(CONFIG_SYNAPTICS_OPPO) += synaptics_s3508/
 #add for hall sensor
 obj-$(CONFIG_HALL) += hall/

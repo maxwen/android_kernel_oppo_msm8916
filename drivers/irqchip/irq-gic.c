@@ -241,7 +241,7 @@ static int gic_suspend(void)
 }
 
 extern int msm_show_resume_irq_mask;
-#ifdef VENDOR_EDIT
+#ifdef CONFIG_VENDOR_EDIT
 /*Fuchun.Liao@Mobile.BSP.Power 2014-11-05 add for test patch*/
 /*
 int special_200_triggered = 0;
@@ -278,7 +278,7 @@ static void gic_show_resume_irq(struct gic_chip_data *gic)
 {
 	unsigned int i;
 	u32 enabled;
-#ifdef VENDOR_EDIT
+#ifdef CONFIG_VENDOR_EDIT
 /*Fuchun.Liao@Mobile.BSP.Power 2014-11-05 add for test patch*/
 	//unsigned int j = 0,irq = 0;
 #endif
@@ -309,7 +309,7 @@ static void gic_show_resume_irq(struct gic_chip_data *gic)
 
 		pr_warning("%s: %d triggered %s\n", __func__,
 					i + gic->irq_offset, name);
-#ifdef VENDOR_EDIT
+#ifdef CONFIG_VENDOR_EDIT
 /*Fuchun.Liao@Mobile.BSP.Power 2014-11-05 add for test patch*/
 /*
 		irq = i + gic->irq_offset;
@@ -318,7 +318,7 @@ static void gic_show_resume_irq(struct gic_chip_data *gic)
 #endif
 	}
 
-#ifdef VENDOR_EDIT
+#ifdef CONFIG_VENDOR_EDIT
 /*Fuchun.Liao@Mobile.BSP.Power 2014-11-05 add for test patch*/
 /*
 	if((1 == j)&&(200 == irq))

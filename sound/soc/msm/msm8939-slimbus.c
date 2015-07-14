@@ -95,7 +95,7 @@ static int msm8939_spk_control = 1;
 static int vdd_spkr_gpio = -1;
 static int clk_users;
 /*OPPO 2014-11-18 zhzhyon Delete for sleep currect*/
-#ifndef VENDOR_EDIT
+#ifndef CONFIG_VENDOR_EDIT
 static int mclk_users;
 #endif
 /*OPPO 2014-11-18 zhzhyon Delete end*/
@@ -150,7 +150,7 @@ static struct wcd9xxx_mbhc_config wcd9xxx_mbhc_cfg = {
 	.gpio_irq = 0,
 	.gpio_level_insert = 0,
 	/*OPPO 2014-10-23 zhzhyon Modify for headset detect*/
-	#ifndef VENDOR_EDIT
+	#ifndef CONFIG_VENDOR_EDIT
 	.detect_extn_cable = true,
 	#else
 	.detect_extn_cable = false,
@@ -354,7 +354,7 @@ static int msm8939_set_spk(struct snd_kcontrol *kcontrol,
 }
 
 /*OPPO 2014-11-18 zhzhyon Modify for sleep current*/
-#ifndef VENDOR_EDIT
+#ifndef CONFIG_VENDOR_EDIT
 static int msm_snd_enable_codec_ext_clk(struct snd_soc_codec *codec, int enable,
 					bool dapm)
 {
@@ -1570,7 +1570,7 @@ static int conf_int_codec_mux_quat(struct msm8939_asoc_mach_data *pdata)
 	return ret;
 }
 /*OPPO 2014-09-02 zhzhyon Delete for big current*/
-#ifndef VENDOR_EDIT
+#ifndef CONFIG_VENDOR_EDIT
 static int msm_snd_enable_quat_mclk(struct snd_soc_codec *codec, int enable,
 					bool dapm)
 {
@@ -1626,7 +1626,7 @@ static int msm_quat_mi2s_snd_startup(struct snd_pcm_substream *substream)
 	struct snd_soc_card *card = rtd->card;
 	struct snd_soc_dai *cpu_dai = rtd->cpu_dai;
 	/*OPPO 2014-09-02 zhzhyon Delete for bit current*/
-	#ifndef VENDOR_EDIT
+	#ifndef CONFIG_VENDOR_EDIT
 	struct snd_soc_codec *codec = rtd->codec;
 	#endif
 	/*OPPO 2014-09-02 zhzhyon Delete end*/
@@ -1645,7 +1645,7 @@ static int msm_quat_mi2s_snd_startup(struct snd_pcm_substream *substream)
 			return ret;
 		}
 		/*OPPO 2014-09-02 zhzhyon Delete for bit current*/
-		#ifndef VENDOR_EDIT
+		#ifndef CONFIG_VENDOR_EDIT
 		ret = msm_snd_enable_quat_mclk(codec, 1, true);
 		if (ret < 0) {
 			pr_err("failed to enable mclk\n");
@@ -1685,7 +1685,7 @@ err1:
 
 err:
 	/*OPPO 2014-09-02 zhzhyon Delete for big current*/
-	#ifndef VENDOR_EDIT
+	#ifndef CONFIG_VENDOR_EDIT
 	ret = msm_snd_enable_quat_mclk(codec, 0, true);
 	if (ret < 0)
 		pr_err("%s:failed to disable mclk\n", __func__);

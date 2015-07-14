@@ -3865,7 +3865,7 @@ static int qpnp_leds_probe(struct spmi_device *spmi)
 
 		/* configure default state */
 		if (led->default_on) {
-#ifdef VENDOR_EDIT
+#ifdef CONFIG_VENDOR_EDIT
 //guoling@MM.lcddriver modify for backlight 
             //modify for same brightness with lk
 #else

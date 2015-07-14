@@ -39,7 +39,7 @@ do {									\
 } while (0)
 
 /* OPPO 2014-07-31 wenxian.zhen modify begin for power up alarm */
-#ifndef VENDOR_EDIT
+#ifndef CONFIG_VENDOR_EDIT
 #define ANDROID_ALARM_WAKEUP_MASK ( \
 	ANDROID_ALARM_RTC_WAKEUP_MASK | \
 	ANDROID_ALARM_ELAPSED_REALTIME_WAKEUP_MASK | \
@@ -77,7 +77,7 @@ static int is_wakeup(enum android_alarm_type type)
 	return (type == ANDROID_ALARM_RTC_WAKEUP ||
 		type == ANDROID_ALARM_ELAPSED_REALTIME_WAKEUP ||
 
-#ifndef VENDOR_EDIT
+#ifndef CONFIG_VENDOR_EDIT
 	/* wenxian.zhen@Onlinerd.Driver, 2014/07/31  Modify for power off alarm */	
 		type == ANDROID_ALARM_RTC_POWEROFF_WAKEUP);
 #else
@@ -128,7 +128,7 @@ static void alarm_clear(enum android_alarm_type alarm_type, struct timespec *ts)
 	}
 	alarm_enabled &= ~alarm_type_mask;
 	spin_unlock_irqrestore(&alarm_slock, flags);
-#ifndef VENDOR_EDIT
+#ifndef CONFIG_VENDOR_EDIT
 	/* wenxian.zhen@Onlinerd.Driver, 2014/07/31  Modify for power off alarm */
 	if (alarm_type == ANDROID_ALARM_RTC_POWEROFF_WAKEUP)
 #else /*power off alarm*/
@@ -152,7 +152,7 @@ static void alarm_set(enum android_alarm_type alarm_type,
 	devalarm_start(&alarms[alarm_type], timespec_to_ktime(*ts));
 	spin_unlock_irqrestore(&alarm_slock, flags);
 
-#ifndef VENDOR_EDIT
+#ifndef CONFIG_VENDOR_EDIT
 /* wenxian.zhen@Onlinerd.Driver, 2014/07/31  Modify for power off alarm */
 	if (alarm_type == ANDROID_ALARM_RTC_POWEROFF_WAKEUP)
 #else /*power off alarm*/
@@ -220,7 +220,7 @@ static int alarm_get_time(enum android_alarm_type alarm_type,
 	case ANDROID_ALARM_RTC_WAKEUP:
 	case ANDROID_ALARM_RTC:
 	case ANDROID_ALARM_RTC_POWEROFF_WAKEUP:
-#ifdef VENDOR_EDIT
+#ifdef CONFIG_VENDOR_EDIT
 		/* wenxian.zhen@Onlinerd.Driver, 2014/07/31  add begin for power off alarm */
 	case ANDROID_ALARM_RTC_POWERUP:
 #endif 
@@ -469,7 +469,7 @@ static int __init alarm_dev_init(void)
 	alarm_init(&alarms[ANDROID_ALARM_RTC_POWEROFF_WAKEUP].u.alrm,
 			ALARM_REALTIME, devalarm_alarmhandler);
 	/* OPPO 2014-07-31 wenxian.zhen add begin for power up alarm */
-#ifdef VENDOR_EDIT
+#ifdef CONFIG_VENDOR_EDIT
 	alarm_init(&alarms[ANDROID_ALARM_RTC_POWERUP].u.alrm,
 			ALARM_REALTIME, devalarm_alarmhandler);
 #endif

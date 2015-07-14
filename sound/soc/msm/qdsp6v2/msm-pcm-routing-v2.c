@@ -3491,7 +3491,7 @@ static const struct snd_soc_dapm_widget msm_qdsp6_widgets[] = {
 };
 
 /*OPPO 2014-09-12 zhzhyon Add for 14005 and 14045 loopback*/
-#ifdef VENDOR_EDIT
+#ifdef CONFIG_VENDOR_EDIT
 static const struct snd_soc_dapm_route intercon_tert_i2s[] = 
 {
 	{"QUAT_MI2S_RX_DL_HL", "Switch", "TERT_MI2S_DL_HL"},
@@ -4463,7 +4463,7 @@ static int msm_routing_probe(struct snd_soc_platform *platform)
 	snd_soc_dapm_new_controls(&platform->dapm, msm_qdsp6_widgets,
 			   ARRAY_SIZE(msm_qdsp6_widgets));
 	/*OPPO 2014-09-12 zhzhyon Add for 14045 and 14005 loopback*/
-	#ifdef VENDOR_EDIT
+	#ifdef CONFIG_VENDOR_EDIT
 	if(is_project(OPPO_14005) ||is_project(OPPO_14006))
 	{
 		snd_soc_dapm_add_routes(&platform->dapm, intercon_slim,

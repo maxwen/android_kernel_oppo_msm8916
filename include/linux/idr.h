@@ -72,7 +72,7 @@ struct idr {
 /*
  * This is what we export.
  */
-#ifdef VENDOR_EDIT
+#ifdef CONFIG_VENDOR_EDIT
 int oppo_idr_get_new(struct idr *idp, void *ptr, int *id);
 #endif 
 void *idr_find_slowpath(struct idr *idp, int id);

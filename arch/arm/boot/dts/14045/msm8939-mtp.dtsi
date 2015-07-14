@@ -127,7 +127,7 @@
 			//Modify regulator name by qiujianfeng
 			regulator-name = "bq24196_otg_vreg";
 		}; 		
-                //#ifdef VENDOR_EDIT Jianfeng.Qiu@BSP.Driver, 2014-09-11, Add for breath led
+                //#ifdef CONFIG_VENDOR_EDIT Jianfeng.Qiu@BSP.Driver, 2014-09-11, Add for breath led
                 sn3193_led@68 {
                         status = "okay";
                         compatible = "sn3193,issi-rgb";
@@ -190,7 +190,7 @@
 		};
 
 		/*
-		//#ifdef VENDOR_EDIT  
+		//#ifdef CONFIG_VENDOR_EDIT  
    		//deleted by zhengzhiyong@Multimedia.group (conflict with AUDIO_LDO_EN ) 2014-9-11  
 		camera_snapshot {
 			label = "camera_snapshot";
@@ -438,11 +438,11 @@
 };
 
 &sdhc_2 {
-//#ifndef VENDOR_EDIT //Jianfeng.Qiu@BSP.Driver, 2014-09-13, Modify for tf card vdd supply change
+//#ifndef CONFIG_VENDOR_EDIT //Jianfeng.Qiu@BSP.Driver, 2014-09-13, Modify for tf card vdd supply change
 	//vdd-supply = <&pm8916_l11>;
-//#else /* VENDOR_EDIT */
+//#else /* CONFIG_VENDOR_EDIT */
     vdd-gpio-en = <&msm_gpio 121 0x1>;
-//#endif /* VENDOR_EDIT */
+//#endif /* CONFIG_VENDOR_EDIT */
 	qcom,vdd-voltage-level = <2800000 2950000>;
 	qcom,vdd-current-level = <15000 400000>;
 
@@ -463,7 +463,7 @@
 			1 &intc 0 221 0
 			2 &msm_gpio 38 0>;
 	interrupt-names = "hc_irq", "pwr_irq", "status_irq";
-	//#ifdef VENDOR_EDIT //yixue.ge modify for 14045 tcard hotplug
+	//#ifdef CONFIG_VENDOR_EDIT //yixue.ge modify for 14045 tcard hotplug
 	//cd-gpios = <&msm_gpio 38 0x1>;
 	//#else
 	cd-gpios = <&msm_gpio 38 0x0>;

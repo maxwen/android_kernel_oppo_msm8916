@@ -28,13 +28,13 @@
 #include "board-dt.h"
 #include "platsmp.h"
 
-#ifdef VENDOR_EDIT //Yixue.ge@ProDrv.BL add for ftm 2014-01-04
+#ifdef CONFIG_VENDOR_EDIT //Yixue.ge@ProDrv.BL add for ftm 2014-01-04
 #include <mach/oppo_project.h>
 #include <mach/oppo_boot_mode.h>
 static struct kobject *systeminfo_kobj;
 #endif
 
-#ifdef VENDOR_EDIT
+#ifdef CONFIG_VENDOR_EDIT
 /* OPPO 2013.07.09 hewei add begin for factory mode*/
 #include <linux/gpio.h>
 
@@ -143,9 +143,9 @@ static struct attribute_group attr_group = {
 	.attrs = g,
 };
 /* OPPO 2013.07.09 hewei add end for factory modes*/
-#endif // VENDOR_EDIT
+#endif // CONFIG_VENDOR_EDIT
 
-#ifdef VENDOR_EDIT
+#ifdef CONFIG_VENDOR_EDIT
 /* OPPO 2013-09-03 heiwei add for add interface start reason and boot_mode begin */
 char pwron_event[16];
 static int __init start_reason_init(void)
@@ -187,7 +187,7 @@ static int __init boot_mode_init(void)
 }
 //__setup("androidboot.mode=", boot_mode_setup);
 /* OPPO 2013-09-03 zhanglong add for add interface start reason and boot_mode end */
-#endif //VENDOR_EDIT
+#endif //CONFIG_VENDOR_EDIT
 
 static void __init msm8916_dt_reserve(void)
 {
@@ -219,11 +219,11 @@ void __init msm8916_add_drivers(void)
 
 static void __init msm8916_init(void)
 {
-#ifdef VENDOR_EDIT
+#ifdef CONFIG_VENDOR_EDIT
 	/* OPPO 2013.07.09 hewei add begin for FTM */
 	int rc = 0;
 	/* OPPO 2013.07.09 hewei add end for FTM */
-#endif //VENDOR_EDIT
+#endif //CONFIG_VENDOR_EDIT
 	struct of_dev_auxdata *adata = msm8916_auxdata_lookup;
 
 	/*
@@ -237,31 +237,31 @@ static void __init msm8916_init(void)
 	if (socinfo_init() < 0)
 		pr_err("%s: socinfo_init() failed\n", __func__);
 
-#ifdef VENDOR_EDIT		
+#ifdef CONFIG_VENDOR_EDIT		
 	/* OPPO 2013.07.09 hewei add begin for factory mode*/
 	board_mfg_mode_init();
 	/* OPPO 2013.07.09 hewei add end */
-#endif //VENDOR_EDIT
+#endif //CONFIG_VENDOR_EDIT
 
-#ifdef VENDOR_EDIT
+#ifdef CONFIG_VENDOR_EDIT
 /* OPPO 2013-09-03 heiwei add for add interface start reason and boot_mode begin */
     start_reason_init();
     boot_mode_init();
 /* OPPO 2013-09-03 zhanglong add for add interface start reason and boot_mode end */
-#endif //VENDOR_EDIT
+#endif //CONFIG_VENDOR_EDIT
 
 	msm8916_add_drivers();
-	#ifdef VENDOR_EDIT //Yixue.ge@ProDrv.BL add for ftm 2014-01-04
+	#ifdef CONFIG_VENDOR_EDIT //Yixue.ge@ProDrv.BL add for ftm 2014-01-04
 	init_project_version();
 	#endif
-#ifdef VENDOR_EDIT	
+#ifdef CONFIG_VENDOR_EDIT	
 	/* OPPO 2013.07.09 hewei add begin for factory mode*/
 	systeminfo_kobj = kobject_create_and_add("systeminfo", NULL);
 	printk("songxh create systeminto node suscess!\n");
 	if (systeminfo_kobj)
 		rc = sysfs_create_group(systeminfo_kobj, &attr_group);
 	/* OPPO 2013.07.09 hewei add end */
-#endif //VENDOR_EDIT	
+#endif //CONFIG_VENDOR_EDIT	
 
 }
 

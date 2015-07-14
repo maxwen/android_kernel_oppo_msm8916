@@ -347,7 +347,7 @@
 		};
 	};
 	
-//#ifdef VENDOR_EDIT
+//#ifdef CONFIG_VENDOR_EDIT
 //WeiHong.Li@OnLineRD.AirService.Module, 2013/10/24, add for OEM DATA region 
 	memory_hole: qcom,msm-mem-hole {
 		compatible = "qcom,msm-mem-hole";

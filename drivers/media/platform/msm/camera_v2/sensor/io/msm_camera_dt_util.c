@@ -26,7 +26,7 @@
 #define CDBG(fmt, args...) do { } while (0)
 #endif
 
-#ifdef VENDOR_EDIT
+#ifdef CONFIG_VENDOR_EDIT
 /* zhengrong.zhang 2014-11-08 Add for open flash problem in status bar problem when camera opening */
 bool camera_power_status = FALSE;
 #endif
@@ -448,7 +448,7 @@ int msm_camera_get_dt_power_setting_data(struct device_node *of_node,
 				ps[i].seq_val = SENSOR_GPIO_STANDBY;
 			else if (!strcmp(seq_name, "sensor_gpio_vdig"))
 				ps[i].seq_val = SENSOR_GPIO_VDIG;
-#ifdef VENDOR_EDIT
+#ifdef CONFIG_VENDOR_EDIT
 /* xianglie.liu 2014-09-03 add for add gpio-vio config */
 			else if (!strcmp(seq_name, "sensor_gpio_vio"))
 				ps[i].seq_val = SENSOR_GPIO_VIO;
@@ -787,7 +787,7 @@ int msm_camera_init_gpio_pin_tbl(struct device_node *of_node,
 	} else
 		rc = 0;
 
-#ifdef VENDOR_EDIT	
+#ifdef CONFIG_VENDOR_EDIT	
 //lxl @camera team add for add gpio-vio config
  
 	rc = of_property_read_u32(of_node, "qcom,gpio-vio", &val);
@@ -1237,7 +1237,7 @@ int msm_camera_power_up(struct msm_camera_power_ctrl_t *ctrl,
 		}
 	}
 
-#ifdef VENDOR_EDIT
+#ifdef CONFIG_VENDOR_EDIT
 /* zhengrong.zhang 2014-11-08 Add for open flash problem in status bar problem when camera opening */
 	camera_power_status = TRUE;
 #endif
@@ -1429,7 +1429,7 @@ int msm_camera_power_down(struct msm_camera_power_ctrl_t *ctrl,
 		ctrl->gpio_conf->cam_gpio_req_tbl,
 		ctrl->gpio_conf->cam_gpio_req_tbl_size, 0);
 
-#ifdef VENDOR_EDIT
+#ifdef CONFIG_VENDOR_EDIT
 /* zhengrong.zhang 2014-11-08 Add for open flash problem in status bar problem when camera opening */
 	camera_power_status = FALSE;
 #endif

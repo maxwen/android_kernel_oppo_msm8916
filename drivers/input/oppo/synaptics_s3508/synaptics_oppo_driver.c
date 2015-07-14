@@ -1,6 +1,6 @@
 /************************************************************************************
 ** File: - /android/kernel/drivers/input/touchscreen/synaptic_s3203_13095/synaptics_s3203_13095.c
-** VENDOR_EDIT
+** CONFIG_VENDOR_EDIT
 ** Copyright (C), 2008-2012, OPPO Mobile Comm Corp., Ltd
 ** 
 ** Description:  
@@ -4321,9 +4321,9 @@ err_alloc_data_failed:
 	kfree(ts);
 err_check_functionality_failed:
 	
-#ifdef VENDOR_EDIT //hsy@oppo.com, add 2011/12/14 for tpd power off	
+#ifdef CONFIG_VENDOR_EDIT //hsy@oppo.com, add 2011/12/14 for tpd power off	
 	tpd_power(ts, 0);
-#endif /*VENDOR_EDIT*/
+#endif /*CONFIG_VENDOR_EDIT*/
 	printk("synaptics_ts_probe: not normal end\n");
 	return ret;
 }

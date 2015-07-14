@@ -240,7 +240,7 @@ CONFIG_PPP_DEFLATE=y
 CONFIG_PPPOE=y
 CONFIG_PPP_ASYNC=y
 CONFIG_PPP_SYNC_TTY=y
-#ifdef VENDOR_EDIT//Modify by Yongyao.song@Network.DATA, for VPN connect
+#ifdef CONFIG_VENDOR_EDIT//Modify by Yongyao.song@Network.DATA, for VPN connect
 CONFIG_PPPOLAC=y
 CONFIG_PPPOPNS=y
 CONFIG_PPP_MPPE=y
@@ -276,11 +276,11 @@ CONFIG_SENSORS_AKM09911=y
 CONFIG_SENSORS_BMA2X2=y
 CONFIG_SENSORS_MMC3416X=y
 CONFIG_SENSORS_AKM8963=y
-#ifdef VENDOR_EDIT /* LiuPing@Phone.BSP.Sensor, 2014/07/19, add for sensor */
+#ifdef CONFIG_VENDOR_EDIT /* LiuPing@Phone.BSP.Sensor, 2014/07/19, add for sensor */
 CONFIG_SENSORS_STK3X1X=y
 CONFIG_HALL=y
 CONFIG_SENSORS_TMG399X=y
-#endif /*VENDOR_EDIT*/
+#endif /*CONFIG_VENDOR_EDIT*/
 CONFIG_SERIAL_MSM_HSL=y
 CONFIG_SERIAL_MSM_HSL_CONSOLE=y
 CONFIG_SERIAL_MSM_SMD=y
@@ -420,7 +420,7 @@ CONFIG_MMC_SDHCI=y
 CONFIG_MMC_SDHCI_PLTFM=y
 CONFIG_MMC_SDHCI_MSM=y
 
-#ifdef VENDOR_EDIT//Modify by Tong.Han@Bsp.group add feature for emmc crash case,2014-10-23 removed at 2014-11-07
+#ifdef CONFIG_VENDOR_EDIT//Modify by Tong.Han@Bsp.group add feature for emmc crash case,2014-10-23 removed at 2014-11-07
 #CONFIG_MMC_DEBUG =y
 #endif
 
@@ -458,7 +458,7 @@ CONFIG_PWM_QPNP=y
 CONFIG_MOBICORE_SUPPORT=m
 CONFIG_MOBICORE_API=m
 
-#ifdef VENDOR_EDIT//Modify by Tong.Han@Bsp.group remove some feature for io test,2014-9-29
+#ifdef CONFIG_VENDOR_EDIT//Modify by Tong.Han@Bsp.group remove some feature for io test,2014-9-29
 #CONFIG_CORESIGHT=y
 #CONFIG_CORESIGHT_FUSE=y
 #CONFIG_CORESIGHT_EVENT=y
@@ -513,7 +513,7 @@ CONFIG_NLS_ASCII=y
 CONFIG_NLS_ISO8859_1=y
 CONFIG_PRINTK_TIME=y
 CONFIG_MAGIC_SYSRQ=y
-#ifdef VENDOR_EDIT//Modify by Tong.Han@Bsp.group remove some feature for io test,2014-9-29
+#ifdef CONFIG_VENDOR_EDIT//Modify by Tong.Han@Bsp.group remove some feature for io test,2014-9-29
 #CONFIG_LOCKUP_DETECTOR=y
 #CONFIG_BOOTPARAM_SOFTLOCKUP_PANIC=y
 #endif
@@ -522,7 +522,7 @@ CONFIG_MAGIC_SYSRQ=y
 CONFIG_SCHEDSTATS=y
 CONFIG_TIMER_STATS=y
 
-#ifdef VENDOR_EDIT//Modify by Tong.Han@Bsp.group remove some feature for io test,2014-9-29
+#ifdef CONFIG_VENDOR_EDIT//Modify by Tong.Han@Bsp.group remove some feature for io test,2014-9-29
 #CONFIG_DEBUG_KMEMLEAK=y
 #CONFIG_DEBUG_KMEMLEAK_EARLY_LOG_SIZE=4000
 #CONFIG_DEBUG_KMEMLEAK_DEFAULT_OFF=y
@@ -532,7 +532,7 @@ CONFIG_TIMER_STATS=y
 #CONFIG_DEBUG_STACK_USAGE=y
 #endif
 
-#ifdef VENDOR_EDIT//Modify by Tong.Han@Bsp.group open some feature for debug,need remove before PVT 2014-9-29
+#ifdef CONFIG_VENDOR_EDIT//Modify by Tong.Han@Bsp.group open some feature for debug,need remove before PVT 2014-9-29
 #CONFIG_DEBUG_SPINLOCK=y
 #CONFIG_MSM_RTB=y
 #CONFIG_MSM_RTB_SEPARATE_CPUS=y
@@ -542,7 +542,7 @@ CONFIG_TIMER_STATS=y
 CONFIG_DEBUG_INFO=y
 #CONFIG_DEBUG_MEMORY_INIT=y
 
-#ifdef VENDOR_EDIT//Modify by Tong.Han@Bsp.group remove some feature for io test,2014-9-29
+#ifdef CONFIG_VENDOR_EDIT//Modify by Tong.Han@Bsp.group remove some feature for io test,2014-9-29
 #CONFIG_DEBUG_LIST=y
 #CONFIG_FAULT_INJECTION=y
 #CONFIG_FAIL_PAGE_ALLOC=y
@@ -555,14 +555,14 @@ CONFIG_DEBUG_INFO=y
 
 CONFIG_IPC_LOGGING=y
 
-#ifdef VENDOR_EDIT//Modify by Tong.Han@Bsp.group add dynamic_debug feature for sound debug,2014-10-23
+#ifdef CONFIG_VENDOR_EDIT//Modify by Tong.Han@Bsp.group add dynamic_debug feature for sound debug,2014-10-23
 #CONFIG_DYNAMIC_DEBUG=y
 #CONFIG_PANIC_ON_DATA_CORRUPTION=y
 #endif
 
 #CONFIG_DEBUG_USER=y
 
-#ifdef VENDOR_EDIT//Modify by Tong.Han@Bsp.group remove some feature for io test,2014-9-29
+#ifdef CONFIG_VENDOR_EDIT//Modify by Tong.Han@Bsp.group remove some feature for io test,2014-9-29
 #CONFIG_FREE_PAGES_RDONLY=y
 #CONFIG_DEBUG_LL=y
 #CONFIG_EARLY_PRINTK=y
@@ -589,13 +589,13 @@ CONFIG_MSM_AVTIMER=y
 CONFIG_SCHED_HMP=y
 CONFIG_FORCE_INSTRUCTION_ALIGNMENT=y
 
-# ifdef VENDOR_EDIT
+# ifdef CONFIG_VENDOR_EDIT
 # //chenggang.li@BSP.TP  modified for oppo 2014-07-09
 CONFIG_INPUT_OPPO=y
 CONFIG_SYNAPTICS_OPPO=y
 # endif
 
-# ifdef VENDOR_EDIT
+# ifdef CONFIG_VENDOR_EDIT
 # //dengnw@BSP.charger  modified for oppo 2014-07-27
 CONFIG_OPPO_CHARGER=y
 CONFIG_BQ24196_CHARGER=y
@@ -603,27 +603,27 @@ CONFIG_OPPO_DEVICE_IFNO=y
 CONFIG_OPPO_COMMON_SOFT=y
 # endif
 
-# ifdef VENDOR_EDIT //yixue.ge@BSP.Driver, 2014/04/15, Add for exfat filesystem
+# ifdef CONFIG_VENDOR_EDIT //yixue.ge@BSP.Driver, 2014/04/15, Add for exfat filesystem
 CONFIG_NLS_UTF8=y
 CONFIG_EXFAT_FS=y
 # endif
 
-# ifdef VENDOR_EDIT //Jianfeng.Qiu@BSP.Driver, 2014/09/11, Add for breath led
+# ifdef CONFIG_VENDOR_EDIT //Jianfeng.Qiu@BSP.Driver, 2014/09/11, Add for breath led
 CONFIG_SN3193_SLED=y
 # endif
 
-# ifdef VENDOR_EDIT //tong.han@BSP.Driver, 2014/11/06, Add for breath led(KTD2026)
+# ifdef CONFIG_VENDOR_EDIT //tong.han@BSP.Driver, 2014/11/06, Add for breath led(KTD2026)
 #CONFIG_KTD2026_SLED=y
 # endif
 
-#ifdef VENDOR_EDIT
+#ifdef CONFIG_VENDOR_EDIT
 #ye.zhang@BSP.Sensor, add or uei remote
 CONFIG_UEI=y
 CONFIG_INPUT_KXTJ9=y
 CONFIG_HALL=y
 #endif
 
-# ifdef VENDOR_EDIT
+# ifdef CONFIG_VENDOR_EDIT
 # //jiaoyifei add  for nfc oppo 2014-09-21
 CONFIG_NFC_DEVICES=y
 CONFIG_PN544_NFC=y

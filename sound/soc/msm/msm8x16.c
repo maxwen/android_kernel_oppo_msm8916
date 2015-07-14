@@ -44,7 +44,7 @@
 #define TER_MI2S_ID	(1 << 2)
 #define QUAT_MI2S_ID (1 << 3)
 /*OPPO 2014-10-16 zhzhyon Add for quat and sec i2s patch*/
-#ifdef VENDOR_EDIT
+#ifdef CONFIG_VENDOR_EDIT
 #define QUAT_SEC_MI2S_ID (QUAT_MI2S_ID | SEC_MI2S_ID)
 #endif
 /*OPPO 2014-10-16 zhzhyon Add end*/
@@ -86,7 +86,7 @@ static struct wcd_mbhc_config mbhc_cfg = {
 	.read_fw_bin = false,
 	.calibration = NULL,
 	/*xiang.fei@Multimedia, 2014/08/16, Modify for headset detect*/
-	#ifndef VENDOR_EDIT
+	#ifndef CONFIG_VENDOR_EDIT
 	.detect_extn_cable = true,
 	#else
 	.detect_extn_cable = false,
@@ -686,7 +686,7 @@ static int msm_mi2s_snd_hw_params(struct snd_pcm_substream *substream,
 }
 
 /*OPPO 2014-10-16 zhzhyon Add for quat and sec i2s patch*/
-#ifdef VENDOR_EDIT
+#ifdef CONFIG_VENDOR_EDIT
 static int quat_mi2s_sclk_ctl(struct snd_pcm_substream *substream, bool enable)
 {
 	int ret = 0;
@@ -1076,7 +1076,7 @@ static void msm_mi2s_snd_shutdown(struct snd_pcm_substream *substream)
 	}
 }
 /*OPPO 2014-10-16 zhzhyon Modify for quat and sec i2s patch*/
-#ifndef VENDOR_EDIT
+#ifndef CONFIG_VENDOR_EDIT
 static int conf_int_codec_mux_sec(struct msm8916_asoc_mach_data *pdata)
 {
 	int ret = 0;
@@ -1139,7 +1139,7 @@ static int msm_sec_mi2s_snd_startup(struct snd_pcm_substream *substream)
 	struct snd_soc_codec *codec = rtd->codec;
 	struct msm8916_asoc_mach_data *pdata =
 			snd_soc_card_get_drvdata(card);
-#ifdef VENDOR_EDIT
+#ifdef CONFIG_VENDOR_EDIT
 	/*OPPO 2014-08-22 zhzhyon Add for ak4375*/
 	struct snd_soc_dai *codec_dai = rtd->codec_dai;
 	 /*OPPO 2014-08-22 zhzhyon Add end*/
@@ -1186,7 +1186,7 @@ static int msm_sec_mi2s_snd_startup(struct snd_pcm_substream *substream)
 	if (ret < 0)
 		pr_debug("%s: set fmt cpu dai failed\n", __func__);
 /*OPPO 2014-08-02 zhzhyon Add for ak4375*/
-#ifdef VENDOR_EDIT
+#ifdef CONFIG_VENDOR_EDIT
 	snd_soc_dai_set_sysclk(codec_dai, 0, 12288000,
 						SND_SOC_CLOCK_IN);
 
@@ -1366,7 +1366,7 @@ static int msm_mi2s_snd_startup(struct snd_pcm_substream *substream)
 		 * TODO MUX config
 		 */
 		/*OPPO 2014-10-16 zhzhyon Modify for quat and sec i2s patch*/
-		#ifndef VENDOR_EDIT
+		#ifndef CONFIG_VENDOR_EDIT
 		vaddr = ioremap(LPASS_CSR_GP_IO_MUX_SPKR_CTL , 4);
 		if (!vaddr) {
 			pr_err("%s ioremap failure for addr %x\n",
@@ -1553,7 +1553,7 @@ static void *def_msm8x16_wcd_mbhc_cal(void)
 	btn_high = btn_cfg->_v_btn_high;
 
 /*xiang.fei@Multimedia, 2014/09/01, Modify for headset*/
-#ifndef VENDOR_EDIT
+#ifndef CONFIG_VENDOR_EDIT
 	btn_low[0] = 0;
 	btn_high[0] = 25;
 	btn_low[1] = 25;
@@ -1690,7 +1690,7 @@ static struct snd_soc_ops msm8x16_mi2s_be_ops = {
 	.shutdown = msm_mi2s_snd_shutdown,
 };
 
-#ifdef VENDOR_EDIT
+#ifdef CONFIG_VENDOR_EDIT
 /*OPPO 2014-08-21 zhzhyon Add for ak4375*/
 static struct snd_soc_dai_link msm8x16_ak4375_dai[] = {
 	/* Backend DAI Links */
@@ -2368,7 +2368,7 @@ static struct snd_soc_dai_link msm8x16_9302_dai_links[
 				ARRAY_SIZE(msm8x16_dai) +
 				ARRAY_SIZE(msm8x16_9302_dai)];
 
-#ifdef VENDOR_EDIT
+#ifdef CONFIG_VENDOR_EDIT
 /*OPPO 2014-08-21 zhzhyon Add for ak4375*/
 static struct snd_soc_dai_link msm8x16_ak4375_dai_links[
 				ARRAY_SIZE(msm8x16_dai) +
@@ -2405,7 +2405,7 @@ static struct snd_soc_card bear_cards[MAX_SND_CARDS] = {
 		.dai_link	= msm8x16_9302_dai_links,
 		.num_links	= ARRAY_SIZE(msm8x16_9302_dai_links),
 	},
-#ifdef VENDOR_EDIT
+#ifdef CONFIG_VENDOR_EDIT
 	/*OPPO 2014-08-21 zhzhyon Add for ak4375*/
 	{
 		.name		= "msm8x16-snd-card",
@@ -2654,7 +2654,7 @@ void populate_ext_snd_card_dailinks(struct platform_device *pdev)
 	}
 }
 
-#ifdef VENDOR_EDIT
+#ifdef CONFIG_VENDOR_EDIT
 /*OPPO 2014-08-21 zhzhyon Add for ak4375*/
 static void add_snd_card_dailinks(struct platform_device *pdev)
 {
@@ -2693,7 +2693,7 @@ static int msm8x16_asoc_machine_probe(struct platform_device *pdev)
 		goto err;
 	}
 	/*OPPO 2014-10-16 zhzhyon Add for quat and sec i2s patch*/
-	#ifdef VENDOR_EDIT
+	#ifdef CONFIG_VENDOR_EDIT
 	pdata->vaddr_gpio_mux_spkr_ctl =
 		ioremap(LPASS_CSR_GP_IO_MUX_SPKR_CTL , 4);
 	if (!pdata->vaddr_gpio_mux_spkr_ctl) {
@@ -2764,7 +2764,7 @@ static int msm8x16_asoc_machine_probe(struct platform_device *pdev)
 		populate_ext_snd_card_dailinks(pdev);
 		card = &bear_cards[pdev->id];
 	} else {
-#ifdef VENDOR_EDIT
+#ifdef CONFIG_VENDOR_EDIT
 		/*OPPO 2014-08-21 zhzhyon Add for ak4375*/
 		if(is_project(OPPO_14045))
 		{
@@ -3035,7 +3035,7 @@ static int msm8x16_asoc_machine_probe(struct platform_device *pdev)
 err:
 	devm_kfree(&pdev->dev, pdata);
 	/*OPPO 2014-10-16 zhzhyon Add for quat and sec i2s patch*/
-	#ifdef VENDOR_EDIT
+	#ifdef CONFIG_VENDOR_EDIT
 	if (pdata->vaddr_gpio_mux_spkr_ctl)
 		iounmap(pdata->vaddr_gpio_mux_spkr_ctl);
 	if (pdata->vaddr_gpio_mux_mic_ctl)

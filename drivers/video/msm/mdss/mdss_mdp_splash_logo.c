@@ -25,7 +25,7 @@
 #include "mdss_mdp.h"
 #include "splash.h"
 #include "mdss_mdp_splash_logo.h"
-#ifdef VENDOR_EDIT
+#ifdef CONFIG_VENDOR_EDIT
 /* liuyan@Onlinerd.driver, 2014/10/14  Add for ftm sleep current too big */
 #include <mach/oppo_boot_mode.h>
 #include <mach/oppo_project.h>
@@ -553,7 +553,7 @@ static __ref int mdss_mdp_splash_parse_dt(struct msm_fb_data_type *mfd)
 	mfd->splash_info.splash_logo_enabled =
 				of_property_read_bool(pdev->dev.of_node,
 				"qcom,mdss-fb-splash-logo-enabled");
-#ifdef VENDOR_EDIT
+#ifdef CONFIG_VENDOR_EDIT
 /* liuyan@Onlinerd.driver, 2014/10/14  Add for ftm sleep current too big */
         if((get_boot_mode() == MSM_BOOT_MODE__FACTORY)&&(is_project(14005) || is_project(OPPO_14045))){
             mfd->splash_info.splash_logo_enabled=1;

@@ -71,7 +71,7 @@
 #define HS_DETECT_PLUG_INERVAL_MS 100
 #define SWCH_REL_DEBOUNCE_TIME_MS 50
 /*OPPO 2014-10-23 zhzhyon Modify for headset detect*/
-#ifndef VENDOR_EDIT
+#ifndef CONFIG_VENDOR_EDIT
 #define SWCH_IRQ_DEBOUNCE_TIME_US 5000
 #else
 #define SWCH_IRQ_DEBOUNCE_TIME_US 150000
@@ -128,7 +128,7 @@
 /* RX_HPH_CNP_WG_TIME increases by 0.24ms */
 #define WCD9XXX_WG_TIME_FACTOR_US	240
 /*OPPO 2013-03-28 zhzhyon Modify for headset detect*/
-#ifndef VENDOR_EDIT
+#ifndef CONFIG_VENDOR_EDIT
 #define WCD9XXX_V_CS_HS_MAX 500
 #else
 #define WCD9XXX_V_CS_HS_MAX 1200
@@ -197,7 +197,7 @@ enum wcd9xxx_current_v_idx {
 };
 
 /*OPPO 2014-09-01 zhzhyon Add for headset detect*/
-#ifdef VENDOR_EDIT
+#ifdef CONFIG_VENDOR_EDIT
 static int headset_detect_inited = 0;
 static struct wake_lock headset_detect;
 #endif
@@ -205,7 +205,7 @@ static struct wake_lock headset_detect;
 
 
 /*OPPO 2014-09-01 zhzhyon Add for headset key*/
-#ifdef VENDOR_EDIT
+#ifdef CONFIG_VENDOR_EDIT
 static int headset_key_inited = 0;
 static struct wake_lock headset_key;
 #endif
@@ -852,7 +852,7 @@ static void wcd9xxx_insert_detect_setup(struct wcd9xxx_mbhc *mbhc, bool ins)
 	snd_soc_update_bits(mbhc->codec, WCD9XXX_A_MBHC_INSERT_DETECT, 1, 1);
 }
 /*OPPO 2014-09-09 zhzhyon Add for dengnanwei*/
-#ifdef VENDOR_EDIT
+#ifdef CONFIG_VENDOR_EDIT
 enum {
 VOOC_CHARGER_MODE,
 HEADPHONE_MODE,
@@ -882,7 +882,7 @@ static void wcd9xxx_report_plug(struct wcd9xxx_mbhc *mbhc, int insertion,
 			pr_debug("%s: button press is canceled\n", __func__);
 		else if (mbhc->buttons_pressed) {
 			/*OPPO 2014-10-17 zhzhyon Delete for headset remove*/
-			#ifndef VENDOR_EDIT
+			#ifndef CONFIG_VENDOR_EDIT
 			pr_debug("%s: release of button press%d\n",
 				 __func__, jack_type);
 			wcd9xxx_jack_report(mbhc, &mbhc->button_jack, 0,
@@ -1487,7 +1487,7 @@ wcd9xxx_cs_find_plug_type(struct wcd9xxx_mbhc *mbhc,
 		vdce = __wcd9xxx_codec_sta_dce_v(mbhc, true, d->dce,
 						 dce_z, (u32)mb_mv);
 		/*OPPO 2014-08-26 zhzhyon Add for headset detect*/
-		#ifdef VENDOR_EDIT
+		#ifdef CONFIG_VENDOR_EDIT
 		pr_err("headset detect adc value = %d\n",vdce);
 		vdce = vdce > 0 ? vdce:(-vdce);
 		#endif
@@ -1514,7 +1514,7 @@ wcd9xxx_cs_find_plug_type(struct wcd9xxx_mbhc *mbhc,
 				minv = d->_vdces;
 		}
 		/*OPPO 2014-03-28 zhzhyon Delete for headset detect*/
-		#ifndef VENDOR_EDIT
+		#ifndef CONFIG_VENDOR_EDIT
 		if ((!d->mic_bias &&
 		    (d->_vdces >= WCD9XXX_CS_MEAS_INVALD_RANGE_LOW_MV &&
 		     d->_vdces <= WCD9XXX_CS_MEAS_INVALD_RANGE_HIGH_MV)) ||
@@ -1620,7 +1620,7 @@ wcd9xxx_cs_find_plug_type(struct wcd9xxx_mbhc *mbhc,
 
 exit:
 	/*OPPO 2014-05-20 zhzhyon Add for headset detect*/
-	#ifdef VENDOR_EDIT
+	#ifdef CONFIG_VENDOR_EDIT
 	if(type == PLUG_TYPE_GND_MIC_SWAP)
 	{
 		type = PLUG_TYPE_INVALID;
@@ -3112,7 +3112,7 @@ static void wcd9xxx_correct_swch_plug(struct work_struct *work)
 	int highhph_cnt = 0;
 
 	/*OPPO 2014-03-27 zhzhyon Add for headset detect*/
-	#ifdef VENDOR_EDIT
+	#ifdef CONFIG_VENDOR_EDIT
 	int headp_count = 0;
 	#endif
 	/*OPPO 2014-03-27 zhzhyon Add end*/	
@@ -3189,7 +3189,7 @@ static void wcd9xxx_correct_swch_plug(struct work_struct *work)
 				wcd9xxx_report_plug(mbhc, 1,
 						    SND_JACK_HEADPHONE);
 				/*OPPO 2014-05-01 zhzhyon Add for headset detect*/
-				#ifdef VENDOR_EDIT  
+				#ifdef CONFIG_VENDOR_EDIT  
 				break;
 				#endif
 				/*OPPO 2014-05-01 zhzhyon Add end*/
@@ -3202,7 +3202,7 @@ static void wcd9xxx_correct_swch_plug(struct work_struct *work)
 							    SND_JACK_HEADPHONE);
 			} else if (mbhc->current_plug == PLUG_TYPE_NONE) {
 				/*OPPO 2014-03-27 zhzhyon Modify for headset detect*/
-				#ifndef VENDOR_EDIT
+				#ifndef CONFIG_VENDOR_EDIT
 				wcd9xxx_report_plug(mbhc, 1,
 						    SND_JACK_HEADPHONE);
 				#else
@@ -3414,7 +3414,7 @@ static irqreturn_t wcd9xxx_mech_plug_detect_irq(int irq, void *data)
 	int r = IRQ_HANDLED;
 	struct wcd9xxx_mbhc *mbhc = data;
 	/*OPPO 2014-09-01 zhzhyon Add for headset detect*/
-	#ifdef VENDOR_EDIT
+	#ifdef CONFIG_VENDOR_EDIT
 	wake_lock(&headset_detect);
 	#endif
 	/*OPPO 2014-09-01 zhzhyon Add end*/
@@ -3437,14 +3437,14 @@ static irqreturn_t wcd9xxx_mech_plug_detect_irq(int irq, void *data)
 
 	pr_debug("%s: leave %d\n", __func__, r);
 	/*OPPO 2014-09-01 zhzhyon Add for headset detect*/
-	#ifdef VENDOR_EDIT
+	#ifdef CONFIG_VENDOR_EDIT
 	wake_unlock(&headset_detect);
 	#endif
 	/*OPPO 2014-09-01 zhzhyon Add end*/
 	return r;
 }
 /*OPPO 2014-09-01 zhzhyon Delete for headset key*/
-#ifdef VENDOR_EDIT
+#ifdef CONFIG_VENDOR_EDIT
 static int wcd9xxx_is_false_press(struct wcd9xxx_mbhc *mbhc)
 {
 	s16 mb_v;
@@ -3673,12 +3673,12 @@ irqreturn_t wcd9xxx_dce_handler(int irq, void *data)
 	pr_debug("%s: enter\n", __func__);
 
 	/*OPPO 2014-09-01 zhzhyon Add for debug*/
-	#ifdef VENDOR_EDIT
+	#ifdef CONFIG_VENDOR_EDIT
 	printk(KERN_INFO "headset mic key press\n");
 	#endif
 	/*OPPO 2014-09-01 zhzhyon Add end*/
 	/*OPPO 2014-09-01 zhzhyon Add for reason*/
-	#ifdef VENDOR_EDIT
+	#ifdef CONFIG_VENDOR_EDIT
 	wake_lock_timeout(&headset_key, 500);
 	#endif
 	/*OPPO 2014-09-01 zhzhyon Add end*/
@@ -3828,7 +3828,7 @@ irqreturn_t wcd9xxx_dce_handler(int irq, void *data)
 	}
 
 	/*OPPO 2014-09-01 zhzhyon Add for headset key*/
-	#ifdef VENDOR_EDIT
+	#ifdef CONFIG_VENDOR_EDIT
 	btn = 0;
 	#endif
 	/*OPPO 2014-09-01 zhzhyon Add end*/
@@ -3884,7 +3884,7 @@ static irqreturn_t wcd9xxx_release_handler(int irq, void *data)
 					    mbhc->buttons_pressed);
 		} else {
 			/*OPPO 2014-09-01 zhzhyon Delete for headset key*/
-			#ifdef VENDOR_EDIT
+			#ifdef CONFIG_VENDOR_EDIT
 			if (wcd9xxx_is_false_press(mbhc)) 
 			{
 				pr_err("%s: Fake button press interrupt\n",
@@ -4277,7 +4277,7 @@ static int wcd9xxx_setup_jack_detect_irq(struct wcd9xxx_mbhc *mbhc)
 	void *core_res = mbhc->resmgr->core_res;
 	
 	/*OPPO 2014-09-01 zhzhyon Add for headset detect*/
-	#ifdef VENDOR_EDIT
+	#ifdef CONFIG_VENDOR_EDIT
 	if (!headset_detect_inited) {
 		headset_detect_inited = 1;
 		wake_lock_init(&headset_detect, WAKE_LOCK_SUSPEND,	"headset_detect");
@@ -4287,7 +4287,7 @@ static int wcd9xxx_setup_jack_detect_irq(struct wcd9xxx_mbhc *mbhc)
 
 	
 	/*OPPO 2014-09-01 zhzhyon Add for reason*/
-	#ifdef VENDOR_EDIT
+	#ifdef CONFIG_VENDOR_EDIT
 	if (!headset_key_inited) {
 		headset_key_inited = 1;
 		wake_lock_init(&headset_key, WAKE_LOCK_SUSPEND,	"headset_key");

@@ -55,13 +55,13 @@
 #include "mdss_fb.h"
 #include "mdss_mdp_splash_logo.h"
 
-#ifdef VENDOR_EDIT
+#ifdef CONFIG_VENDOR_EDIT
 /* Xiaori.Yuan@Mobile Phone Software Dept.Driver, 2014/08/27  Add for 14045 LCD */
 #include <mach/oppo_project.h>
 //rendong.shi@BasicDrv.LCD modify 2014/03/21 for lcd-backlight in factory mode
 #include <mach/oppo_boot_mode.h>
 static int boot_mode = 0;
-#endif /*VENDOR_EDIT*/
+#endif /*CONFIG_VENDOR_EDIT*/
 
 #ifdef CONFIG_FB_MSM_TRIPLE_BUFFER
 #define MDSS_FB_NUM 3
@@ -536,7 +536,7 @@ static int mdss_fb_lpm_enable(struct msm_fb_data_type *mfd, int mode)
 	return 0;
 }
 
-#ifdef VENDOR_EDIT
+#ifdef CONFIG_VENDOR_EDIT
 /* Xiaori.Yuan@Mobile Phone Software Dept.Driver, 2014/08/14  Add for ftm mode to shut down lcd */
 static ssize_t mdss_mdp_lcdoff_event(struct device *dev,
 		struct device_attribute *attr, char *buf)
@@ -546,7 +546,7 @@ static ssize_t mdss_mdp_lcdoff_event(struct device *dev,
   	   pr_err("%s YXQ mfd=0x%p\n", __func__, mfd);
 	if (!mfd)
 			return -ENODEV;
-#ifdef VENDOR_EDIT
+#ifdef CONFIG_VENDOR_EDIT
 /* liuyan@Onlinerd.driver, 2014/10/14  Add for ftm sleep current too big */
        if(is_project(14005))
 	       return 0;
@@ -575,7 +575,7 @@ static ssize_t mdss_set_hbm(struct device *dev,
     set_hbm_mode(level);
     return count;
 }
-#endif /*VENDOR_EDIT*/
+#endif /*CONFIG_VENDOR_EDIT*/
 
 
 static DEVICE_ATTR(msm_fb_type, S_IRUGO, mdss_fb_get_type, NULL);
@@ -586,12 +586,12 @@ static DEVICE_ATTR(idle_time, S_IRUGO | S_IWUSR | S_IWGRP,
 	mdss_fb_get_idle_time, mdss_fb_set_idle_time);
 static DEVICE_ATTR(idle_notify, S_IRUGO, mdss_fb_get_idle_notify, NULL);
 static DEVICE_ATTR(msm_fb_panel_info, S_IRUGO, mdss_fb_get_panel_info, NULL);
-#ifdef VENDOR_EDIT
+#ifdef CONFIG_VENDOR_EDIT
 /* Xiaori.Yuan@Mobile Phone Software Dept.Driver, 2014/08/14  Add for ftm mode to shut down lcd */
 static DEVICE_ATTR(lcdoff, S_IRUGO, mdss_mdp_lcdoff_event, NULL);
 static DEVICE_ATTR(lpm, S_IRUGO|S_IWUSR, NULL, mdss_set_low_power_mode);
 static DEVICE_ATTR(hbm, S_IRUGO|S_IWUSR, NULL, mdss_set_hbm);
-#endif /*VENDOR_EDIT*/
+#endif /*CONFIG_VENDOR_EDIT*/
 
 
 static struct attribute *mdss_fb_attrs[] = {
@@ -601,12 +601,12 @@ static struct attribute *mdss_fb_attrs[] = {
 	&dev_attr_idle_time.attr,
 	&dev_attr_idle_notify.attr,
 	&dev_attr_msm_fb_panel_info.attr,
-#ifdef VENDOR_EDIT
+#ifdef CONFIG_VENDOR_EDIT
 /* Xiaori.Yuan@Mobile Phone Software Dept.Driver, 2014/08/14  Add for ftm mode shut down lcd */
 	&dev_attr_lcdoff.attr,
 	&dev_attr_lpm.attr,
 	&dev_attr_hbm.attr,
-#endif /*VENDOR_EDIT*/
+#endif /*CONFIG_VENDOR_EDIT*/
 	NULL,
 };
 
@@ -742,7 +742,7 @@ static int mdss_fb_probe(struct platform_device *pdev)
 		mfd->mdp.splash_init_fnc(mfd);
 
 	INIT_DELAYED_WORK(&mfd->idle_notify_work, __mdss_fb_idle_notify_work);
-#ifdef VENDOR_EDIT 
+#ifdef CONFIG_VENDOR_EDIT 
 //guoling@MM.lcddriver add for clear "power by android" logo
 #ifndef OPPO_CMCC_TEST 
 	#ifndef OPPO_CU_TEST
@@ -1008,7 +1008,7 @@ void mdss_fb_set_backlight(struct msm_fb_data_type *mfd, u32 bkl_lvl)
 	int (*update_ad_input)(struct msm_fb_data_type *mfd);
 	u32 temp = bkl_lvl;
 
-	#ifndef VENDOR_EDIT
+	#ifndef CONFIG_VENDOR_EDIT
 	//rendong.shi@BasicDrv.LCD modify 03/21/2014 for factory mode lcd-backlight
 	if (((!mfd->panel_power_on && mfd->dcm_state != DCM_ENTER)
 		|| !mfd->bl_updated) && !IS_CALIB_MODE_BL(mfd) &&

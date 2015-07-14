@@ -157,7 +157,7 @@ struct msm8916_asoc_mach_data {
 	struct mutex cdc_mclk_mutex;
 	struct delayed_work disable_mclk_work;
 	struct afe_digital_clk_cfg digital_cdc_clk;
-#ifdef VENDOR_EDIT
+#ifdef CONFIG_VENDOR_EDIT
 	/*OPPO 2014-10-16 zhzhyon Add for quat and sec i2s patch*/
 	void __iomem *vaddr_gpio_mux_spkr_ctl;
 	void __iomem *vaddr_gpio_mux_mic_ctl;
@@ -222,9 +222,9 @@ struct on_demand_supply {
 struct msm8x16_wcd_priv {
 	struct snd_soc_codec *codec;
 	u16 pmic_rev;
-#ifdef VENDOR_EDIT //Jianfeng.Qiu@Multimedia, 2014/10/28, Add for boost voltage
+#ifdef CONFIG_VENDOR_EDIT //Jianfeng.Qiu@Multimedia, 2014/10/28, Add for boost voltage
 	u32 boost_voltage;
-#endif /* VENDOR_EDIT */
+#endif /* CONFIG_VENDOR_EDIT */
 	u32 adc_count;
 	u32 rx_bias_count;
 	s32 dmic_1_2_clk_cnt;

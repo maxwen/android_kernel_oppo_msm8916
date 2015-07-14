@@ -1,6 +1,6 @@
 /************************************************************
 * Copyright (c) 2013-2014 OPPO Mobile communication Corp.ltd.,
-* VENDOR_EDIT
+* CONFIG_VENDOR_EDIT
 * Description: Simple driver for Texas Instruments LM3630 Backlight driver chip.
 * Version    : 2.0
 * Date       : 2014-08-28
@@ -27,12 +27,12 @@
 
 #include <linux/of_gpio.h>
 #include <mach/gpio.h>
-#ifdef VENDOR_EDIT
+#ifdef CONFIG_VENDOR_EDIT
 /* Xiaori.Yuan@Mobile Phone Software Dept.Driver, 2014/08/27  Add for 14045 LCD */
 #include <mach/device_info.h>
 #include <mach/oppo_project.h>
 #include <mach/oppo_boot_mode.h>
-#endif /*VENDOR_EDIT*/
+#endif /*CONFIG_VENDOR_EDIT*/
 
 #define REG_CTRL	0x00
 #define REG_CONFIG	0x01
@@ -49,10 +49,10 @@
 #define REG_MAXCU_B	0x06
 #define INT_DEBOUNCE_MSEC	10
 
-#ifdef VENDOR_EDIT
+#ifdef CONFIG_VENDOR_EDIT
 /* Xiaori.Yuan@Mobile Phone Software Dept.Driver, 2014/09/23  Add for register backlight info */
 #define REG_REVISION 0x1F
-#endif /*VENDOR_EDIT*/
+#endif /*CONFIG_VENDOR_EDIT*/
 
 static struct lm3630_chip_data *lm3630_pchip;
 #ifdef CONFIG_BL_REGISTER
@@ -587,11 +587,11 @@ static int lm3630_probe(struct i2c_client *client,
 	struct lm3630_platform_data *pdata = client->dev.platform_data;
 	struct lm3630_chip_data *pchip;
 	int ret;
-#ifdef VENDOR_EDIT
+#ifdef CONFIG_VENDOR_EDIT
 /* Xiaori.Yuan@Mobile Phone Software Dept.Driver, 2014/09/23  Add for regist backlight info */
 	unsigned int revision;
     static char *temp;
-#endif /*VENDOR_EDIT*/
+#endif /*CONFIG_VENDOR_EDIT*/
 	
 	pr_err("%s YXQ Enter\n", __func__);
 	if (client->dev.of_node) {
@@ -677,7 +677,7 @@ static int lm3630_probe(struct i2c_client *client,
 		dev_err(&client->dev, "fail : init chip\n");
 		goto err_chip_init;
 	}
-#ifdef VENDOR_EDIT
+#ifdef CONFIG_VENDOR_EDIT
 /* Xiaori.Yuan@Mobile Phone Software Dept.Driver, 2014/09/23  Add for register backlight info */
 	regmap_read(pchip->regmap,REG_REVISION,&revision);
     if (revision == 0x02) {
@@ -686,7 +686,7 @@ static int lm3630_probe(struct i2c_client *client,
         temp = "unknown";
     }
     register_device_proc("backlight", temp, "LM3630A");
-#endif /*VENDOR_EDIT*/
+#endif /*CONFIG_VENDOR_EDIT*/
 #ifdef CONFIG_BL_REGISTER
 	switch (pdata->bank_a_ctrl) {
 	case BANK_A_CTRL_ALL:

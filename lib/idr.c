@@ -404,7 +404,7 @@ EXPORT_SYMBOL(__idr_get_new_above);
  * @id returns a value in the range %0 ... %0x7fffffff
  */
  
-#ifdef VENDOR_EDIT
+#ifdef CONFIG_VENDOR_EDIT
 #define _idr_rc_to_errno(rc) ((rc) == -1 ? -EAGAIN : -ENOSPC)
 int oppo_idr_get_new(struct idr *idp, void *ptr, int *id)
 {

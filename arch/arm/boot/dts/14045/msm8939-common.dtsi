@@ -774,24 +774,24 @@
 		HSUSB_3p3-supply = <&pm8916_l13>;
 		qcom,vdd-voltage-level = <1 5 7>;
 		
-		//#ifndef VENDOR_EDIT //dengnw@BSP.Driver, 2014-11-07, Modify for usb
+		//#ifndef CONFIG_VENDOR_EDIT //dengnw@BSP.Driver, 2014-11-07, Modify for usb
 		//qcom,hsusb-otg-phy-init-seq =
 		//	<0x44 0x80 0x6B 0x81 0x24 0x82 0x13 0x83 0xffffffff>;
-		//#else /* VENDOR_EDIT */
+		//#else /* CONFIG_VENDOR_EDIT */
 		qcom,hsusb-otg-phy-init-seq =<0x44 0x80 0x6D 0x81 0x31 0x82 0x13 0x83 0xffffffff>;
-		//endif /* VENDOR_EDIT */
+		//endif /* CONFIG_VENDOR_EDIT */
 		
 		qcom,hsusb-otg-phy-type = <2>;
-//#ifndef VENDOR_EDIT //Jianfeng.Qiu@BSP.Driver, 2014-09-18, Modify for OTG
+//#ifndef CONFIG_VENDOR_EDIT //Jianfeng.Qiu@BSP.Driver, 2014-09-18, Modify for OTG
 		//qcom,hsusb-otg-mode = <1>;
-//#else /* VENDOR_EDIT */
+//#else /* CONFIG_VENDOR_EDIT */
 		qcom,hsusb-otg-mode = <3>;
 		qcom,usbid-gpio = <&msm_gpio 98 0>;
 		pinctrl-names = "default";
 		pinctrl-0 = <&usbid_default>;
 		vbus_otg-supply = <&bq24196_otg_supply>;
 		qcom,usbin-vadc = <&pm8916_vadc>;
-//endif /* VENDOR_EDIT */
+//endif /* CONFIG_VENDOR_EDIT */
 		qcom,hsusb-otg-otg-control = <2>;
 		qcom,hsusb-otg-disable-reset;
 		qcom,dp-manual-pullup;

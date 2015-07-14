@@ -29,7 +29,7 @@
 #include <linux/rcupdate.h>
 #include "input-compat.h"
 
-#ifdef VENDOR_EDIT
+#ifdef CONFIG_VENDOR_EDIT
 #include <mach/oppo_boot_mode.h>
 #include <mach/oppo_project.h>
 #endif
@@ -676,7 +676,7 @@ static void input_dev_release_keys(struct input_dev *dev)
 		for (code = 0; code <= KEY_MAX; code++) {
 		
 		// 0x73 is reported to the event on the volume keys
-		#ifndef VENDOR_EDIT
+		#ifndef CONFIG_VENDOR_EDIT
 			if (is_event_supported(code, dev->keybit, KEY_MAX) &&
 			    __test_and_clear_bit(code, dev->key)) {
 				input_pass_event(dev, EV_KEY, code, 0);
